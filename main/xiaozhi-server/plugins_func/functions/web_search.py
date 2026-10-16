@@ -15,7 +15,7 @@ TAG = __name__
 logger = setup_logging()
 
 _DEFAULT_DESCRIPTION = (
-    "联网搜索工具。当用户明确需要联网搜索问题时使用此工具。"
+    "Công cụ tìm kiếm trên Internet. Dùng tool này khi người dùng cần tìm kiếm thông tin trên mạng một cách rõ ràng."
 )
 
 WEB_SEARCH_FUNCTION_DESC = {
@@ -28,7 +28,7 @@ WEB_SEARCH_FUNCTION_DESC = {
             "properties": {
                 "query": {
                     "type": "string",
-                    "description": "搜索关键词或问题",
+                    "description": "Từ khóa hoặc câu hỏi tìm kiếm",
                 }
             },
             "required": ["query"],
@@ -38,7 +38,7 @@ WEB_SEARCH_FUNCTION_DESC = {
 
 
 async def _search_metaso(api_key: str, query: str, max_results: int) -> str:
-    """调用秘塔搜索API"""
+    """Gọi API tìm kiếm Metaso"""
     url = "https://metaso.cn/api/v1/search"
     headers = {
         "Authorization": f"Bearer {api_key}",
@@ -53,32 +53,32 @@ async def _search_metaso(api_key: str, query: str, max_results: int) -> str:
         "includeRawContent": False,
         "conciseSnippet": False,
     }
-    logger.bind(tag=TAG).debug(f"秘塔搜索请求 | URL: {url} | payload: {payload}")
+    logger.bind(tag=TAG).debug(f"Yêu cầu tìm kiếm Metaso | URL: {url} | payload: {payload}")
     async with httpx.AsyncClient(timeout=httpx.Timeout(15.0, connect=3.0)) as client:
         response = await client.post(url, json=payload, headers=headers)
     data = response.json()
-    logger.bind(tag=TAG).debug(f"秘塔搜索响应 | status: {response.status_code}")
+    logger.bind(tag=TAG).debug(f"Response tìm kiếm Metaso | status: {response.status_code}")
 
     webpages = data.get("webpages", [])
     if not webpages:
-        return "未找到相关搜索结果。"
+        return "Không tìm thấy kết quả tìm kiếm liên quan."
 
-    lines = ["【联网搜索结果】"]
+    lines = ["【Kết quả tìm kiếm trên mạng】"]
     for i, item in enumerate(webpages, 1):
-        title = item.get("title", "无标题")
+        title = item.get("title", "Không có tiêu đề")
         snippet = item.get("summary", "")
         date = item.get("date", "")
-        lines.append(f"{i}. 标题：{title}")
+        lines.append(f"{i}. Tiêu đề: {title}")
         if date:
-            lines.append(f"   日期：{date}")
+            lines.append(f"   Ngày: {date}")
         if snippet:
-            lines.append(f"   摘要：{snippet}")
+            lines.append(f"   Tóm tắt: {snippet}")
 
     return "\n".join(lines)
 
 
 async def _search_tavily(api_key: str, query: str, max_results: int) -> str:
-    """调用Tavily搜索API"""
+    """Gọi API tìm kiếm Tavily"""
     url = "https://api.tavily.com/search"
     headers = {
         "Authorization": f"Bearer {api_key}",
@@ -90,81 +90,81 @@ async def _search_tavily(api_key: str, query: str, max_results: int) -> str:
         "search_depth": "advanced",
         "include_answer": "advanced",
     }
-    logger.bind(tag=TAG).debug(f"Tavily搜索请求 | URL: {url} | payload: {payload}")
+    logger.bind(tag=TAG).debug(f"Yêu cầu tìm kiếm Tavily | URL: {url} | payload: {payload}")
     async with httpx.AsyncClient(timeout=httpx.Timeout(15.0, connect=3.0)) as client:
         response = await client.post(url, json=payload, headers=headers)
     data = response.json()
-    logger.bind(tag=TAG).debug(f"Tavily搜索响应 | status: {response.status_code} | data: {data}")
+    logger.bind(tag=TAG).debug(f"Response tìm kiếm Tavily | status: {response.status_code} | data: {data}")
 
     results = data.get("results", [])
     if not results:
-        return "未找到相关搜索结果。"
+        return "Không tìm thấy kết quả tìm kiếm liên quan."
 
     answer = data.get("answer", "")
-    lines = [f"【联网搜索结果】\n总结：{answer}"]
+    lines = [f"【Kết quả tìm kiếm trên mạng】\nTóm tắt: {answer}"]
     # for i, item in enumerate(results, 1):
-    #     title = item.get("title", "无标题")
+    #     title = item.get("title", "Không có tiêu đề")
     #     summary = item.get("content", "")
-    #     lines.append(f"{i}. 标题：{title}")
+    #     lines.append(f"{i}. Tiêu đề: {title}")
     #     if summary:
-    #         lines.append(f"   摘要：{summary}")
+    #         lines.append(f"   Tóm tắt: {summary}")
 
     return "\n".join(lines)
 
 
 async def _search_serply(api_key: str, query: str, max_results: int) -> str:
-    """调用Serply搜索API"""
+    """Gọi API tìm kiếm Serply"""
     url = "https://api.serply.io/v1/search"
     headers = {
         "X-Api-Key": api_key,
         "User-Agent": "xiaozhi-esp32-server",
     }
-    # Serply单页最多返回10条，且返回条数可能略多于num，需要本地再截断一次
+    # Serply mỗi trang trả tối đa 10 kết quả, số lượng trả về có thể hơi nhiều hơn num, cần cắt bớt lại ở local
     params = {"q": query, "num": min(max_results, 10)}
-    logger.bind(tag=TAG).debug(f"Serply搜索请求 | URL: {url} | params: {params}")
+    logger.bind(tag=TAG).debug(f"Yêu cầu tìm kiếm Serply | URL: {url} | params: {params}")
     async with httpx.AsyncClient(timeout=httpx.Timeout(15.0, connect=3.0)) as client:
         response = await client.get(url, params=params, headers=headers)
     data = response.json()
-    logger.bind(tag=TAG).debug(f"Serply搜索响应 | status: {response.status_code}")
+    logger.bind(tag=TAG).debug(f"Response tìm kiếm Serply | status: {response.status_code}")
 
     if response.status_code != 200:
         detail = data.get("detail", "") if isinstance(data, dict) else ""
         logger.bind(tag=TAG).error(
-            f"Serply搜索失败 | status: {response.status_code} | detail: {detail}"
+            f"Tìm kiếm Serply thất bại | status: {response.status_code} | detail: {detail}"
         )
-        return "联网搜索请求失败，请检查API Key是否正确。"
+        return "Yêu cầu tìm kiếm trên mạng thất bại, vui lòng kiểm tra API Key có đúng không."
 
     results = data.get("results", [])
     if not results:
-        return "未找到相关搜索结果。"
+        return "Không tìm thấy kết quả tìm kiếm liên quan."
 
-    lines = ["【联网搜索结果】"]
+    lines = ["【Kết quả tìm kiếm trên mạng】"]
     for i, item in enumerate(results[:max_results], 1):
-        title = item.get("title", "无标题")
+        title = item.get("title", "Không có tiêu đề")
         snippet = item.get("description", "")
-        lines.append(f"{i}. 标题：{title}")
+        lines.append(f"{i}. Tiêu đề: {title}")
         if snippet:
-            lines.append(f"   摘要：{snippet}")
+            lines.append(f"   Tóm tắt: {snippet}")
 
     return "\n".join(lines)
 
 
 @register_function("web_search", WEB_SEARCH_FUNCTION_DESC, ToolType.SYSTEM_CTL)
 async def web_search(conn: "ConnectionHandler", query: str = None):
-    logger.bind(tag=TAG).info(f"web_search 被调用 | query={query}")
+    logger.bind(tag=TAG).info(f"web_search được gọi | query={query}")
     if not query:
-        return ActionResponse(Action.REQLLM, "请提供搜索关键词。", None)
+        return ActionResponse(Action.REQLLM, "Vui lòng cung cấp từ khóa tìm kiếm.", None)
 
     web_search_config = conn.config.get("plugins", {}).get("web_search", {})
     provider = web_search_config.get("provider", "").lower()
     max_results = int(web_search_config.get("max_results", 3))
-    logger.bind(tag=TAG).info(f"web_search 配置 | provider={provider} | max_results={max_results} | config_keys={list(web_search_config.keys())}")
+    logger.bind(tag=TAG).info(f"Cấu hình web_search | provider={provider} | max_results={max_results} | config_keys={list(web_search_config.keys())}")
 
     api_key = web_search_config.get("api_key", "")
     if not api_key:
         return ActionResponse(
             Action.REQLLM,
-            "联网搜索功能未配置API Key，请在配置文件中填写。",
+            "Chức năng tìm kiếm trên mạng chưa được cấu hình API Key, vui lòng điền trong file cấu hình.",
             None,
         )
 
@@ -178,18 +178,18 @@ async def web_search(conn: "ConnectionHandler", query: str = None):
         else:
             return ActionResponse(
                 Action.REQLLM,
-                f"联网搜索功能未配置或配置的搜索源无效（当前：{provider}），请检查配置。",
+                f"Chức năng tìm kiếm trên mạng chưa được cấu hình hoặc nguồn tìm kiếm cấu hình không hợp lệ (hiện tại: {provider}), vui lòng kiểm tra cấu hình.",
                 None,
             )
-        logger.bind(tag=TAG).info(f"搜索结果组装完成:\n{result_text}")
+        logger.bind(tag=TAG).info(f"Đã ghép xong kết quả tìm kiếm:\n{result_text}")
     except httpx.TimeoutException:
-        logger.bind(tag=TAG).error("联网搜索请求超时")
-        result_text = "联网搜索请求超时，请稍后重试。"
+        logger.bind(tag=TAG).error("Yêu cầu tìm kiếm trên mạng bị timeout")
+        result_text = "Yêu cầu tìm kiếm trên mạng bị timeout, vui lòng thử lại sau."
     except httpx.HTTPStatusError as e:
-        logger.bind(tag=TAG).error(f"联网搜索请求失败: {e}")
-        result_text = "联网搜索请求失败，请稍后重试。"
+        logger.bind(tag=TAG).error(f"Yêu cầu tìm kiếm trên mạng thất bại: {e}")
+        result_text = "Yêu cầu tìm kiếm trên mạng thất bại, vui lòng thử lại sau."
     except Exception as e:
-        logger.bind(tag=TAG).error(f"联网搜索异常: {e}")
-        result_text = "联网搜索出现异常，请稍后重试。"
+        logger.bind(tag=TAG).error(f"Ngoại lệ tìm kiếm trên mạng: {e}")
+        result_text = "Tìm kiếm trên mạng gặp ngoại lệ, vui lòng thử lại sau."
 
     return ActionResponse(Action.REQLLM, result_text, None)

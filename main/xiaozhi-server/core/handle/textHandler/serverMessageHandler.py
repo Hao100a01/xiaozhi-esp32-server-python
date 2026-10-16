@@ -9,42 +9,42 @@ from core.providers.tools.device_mcp import handle_mcp_message
 TAG = __name__
 
 class ServerTextMessageHandler(TextMessageHandler):
-    """MCP消息处理器"""
+    """Bộ xử lý message MCP"""
 
     @property
     def message_type(self) -> TextMessageType:
         return TextMessageType.SERVER
 
     async def handle(self, conn, msg_json: Dict[str, Any]) -> None:
-        # 如果配置是从API读取的，则需要验证secret
+        # Nếu cấu hình đọc từ API thì cần xác thực secret
         if not conn.read_config_from_api:
             return
-        # 获取post请求的secret
+        # Lấy secret của request POST
         post_secret = msg_json.get("content", {}).get("secret", "")
         secret = conn.config["manager-api"].get("secret", "")
-        # 如果secret不匹配，则返回
+        # Nếu secret không khớp thì trả về
         if post_secret != secret:
             await conn.websocket.send(
                 json.dumps(
                     {
                         "type": "server",
                         "status": "error",
-                        "message": "服务器密钥验证失败",
+                        "message": "Xác thực secret máy chủ thất bại",
                     }
                 )
             )
             return
-        # 动态更新配置
+        # Cập nhật cấu hình động
         if msg_json["action"] == "update_config":
             try:
-                # 更新WebSocketServer的配置
+                # Cập nhật cấu hình của WebSocketServer
                 if not conn.server:
                     await conn.websocket.send(
                         json.dumps(
                             {
                                 "type": "server",
                                 "status": "error",
-                                "message": "无法获取服务器实例",
+                                "message": "Không lấy được instance máy chủ",
                                 "content": {"action": "update_config"},
                             }
                         )
@@ -57,36 +57,36 @@ class ServerTextMessageHandler(TextMessageHandler):
                             {
                                 "type": "server",
                                 "status": "error",
-                                "message": "更新服务器配置失败",
+                                "message": "Cập nhật cấu hình máy chủ thất bại",
                                 "content": {"action": "update_config"},
                             }
                         )
                     )
                     return
 
-                # 发送成功响应
+                # Gửi phản hồi thành công
                 await conn.websocket.send(
                     json.dumps(
                         {
                             "type": "server",
                             "status": "success",
-                            "message": "配置更新成功",
+                            "message": "Cập nhật cấu hình thành công",
                             "content": {"action": "update_config"},
                         }
                     )
                 )
             except Exception as e:
-                conn.logger.bind(tag=TAG).error(f"更新配置失败: {str(e)}")
+                conn.logger.bind(tag=TAG).error(f"Cập nhật cấu hình thất bại: {str(e)}")
                 await conn.websocket.send(
                     json.dumps(
                         {
                             "type": "server",
                             "status": "error",
-                            "message": f"更新配置失败: {str(e)}",
+                            "message": f"Cập nhật cấu hình thất bại: {str(e)}",
                             "content": {"action": "update_config"},
                         }
                     )
                 )
-        # 重启服务器
+        # Khởi động lại máy chủ
         elif msg_json["action"] == "restart":
             await conn.handle_restart(msg_json)

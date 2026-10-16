@@ -1,10 +1,10 @@
 {
   "des": [
-    "在data目录下创建.mcp_server_settings.json文件，可以选择下面的MCP服务，也可以自行添加新的MCP服务。",
-    "后面不断测试补充好用的mcp服务，欢迎大家一起补充。",
-    "记得删除注释行,des属性仅为说明,不会被解析。",
-    "des和link属性，仅为说明安装方式，方便大家查看原始链接，不是必须项。",
-    "当前支持三种传输模式：stdio(标准输入输出), sse(Server-Sent Events), streamable-http(流式HTTP)。"
+    "Tạo file .mcp_server_settings.json trong thư mục data, có thể chọn các dịch vụ MCP bên dưới, hoặc tự thêm dịch vụ MCP mới.",
+    "Về sau sẽ tiếp tục test và bổ sung các mcp server dùng tốt, mọi người cùng bổ sung nhé.",
+    "Nhớ xóa các dòng chú thích, thuộc tính des chỉ để giải thích, sẽ không được parse.",
+    "Thuộc tính des và link chỉ để giải thích cách cài đặt, tiện cho mọi người xem link gốc, không phải mục bắt buộc.",
+    "Hiện tại hỗ trợ 3 chế độ truyền tải: stdio (nhập/xuất chuẩn), sse (Server-Sent Events), streamable-http (HTTP streaming)."
   ],
   "mcpServers": {
     "Home Assistant": {
@@ -42,7 +42,7 @@
       "headers": {
         "Authorization": "Bearer YOUR TOKEN"
       },
-      "des": "使用SSE传输模式（默认）"
+      "des": "Dùng chế độ truyền tải SSE (mặc định)"
     },
     "streamable-http-mcp-server": {
       "url": "http://localhost:8000/mcp",
@@ -50,7 +50,7 @@
       "headers": {
         "Authorization": "Bearer YOUR TOKEN"
       },
-      "des": "使用Streamable HTTP传输模式，适用于生产环境的Web部署"
+      "des": "Dùng chế độ truyền tải Streamable HTTP, phù hợp deploy Web môi trường production"
     }
   }
 }

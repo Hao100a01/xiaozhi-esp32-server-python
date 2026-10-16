@@ -1,6 +1,6 @@
 """
-Opus编码工具类
-将PCM音频数据编码为Opus格式
+Lớp công cụ mã hoá Opus
+Mã hoá dữ liệu audio PCM thành định dạng Opus
 """
 
 import logging
@@ -11,73 +11,73 @@ from opuslib_next import constants
 from typing import Optional, Callable, Any
 
 class OpusEncoderUtils:
-    """PCM到Opus的编码器"""
+    """Bộ mã hoá từ PCM sang Opus"""
 
     def __init__(self, sample_rate: int, channels: int, frame_size_ms: int):
         """
-        初始化Opus编码器
+        Khởi tạo bộ mã hoá Opus
 
         Args:
-            sample_rate: 采样率 (Hz)
-            channels: 通道数 (1=单声道, 2=立体声)
-            frame_size_ms: 帧大小 (毫秒)
+            sample_rate: Tần số lấy mẫu (Hz)
+            channels: Số kênh (1=mono, 2=stereo)
+            frame_size_ms: Kích thước frame (mili giây)
         """
         self.sample_rate = sample_rate
         self.channels = channels
         self.frame_size_ms = frame_size_ms
-        # 计算每帧样本数 = 采样率 * 帧大小(毫秒) / 1000
+        # Tính số mẫu mỗi frame = tần số lấy mẫu * kích thước frame (mili giây) / 1000
         self.frame_size = (sample_rate * frame_size_ms) // 1000
-        # 总帧大小 = 每帧样本数 * 通道数
+        # Tổng kích thước frame = số mẫu mỗi frame * số kênh
         self.total_frame_size = self.frame_size * channels
 
-        # 比特率和复杂度设置
+        # Cài đặt bitrate và độ phức tạp
         self.bitrate = 24000  # bps
-        self.complexity = 10  # 最高质量
+        self.complexity = 10  # Chất lượng cao nhất
 
-        # 缓冲区初始化为空
+        # Khởi tạo bộ đệm rỗng
         self.buffer = np.array([], dtype=np.int16)
 
         try:
-            # 创建Opus编码器
+            # Tạo bộ mã hoá Opus
             self.encoder = Encoder(
-                sample_rate, channels, constants.APPLICATION_AUDIO  # 音频优化模式
+                sample_rate, channels, constants.APPLICATION_AUDIO  # Chế độ tối ưu audio
             )
             self.encoder.bitrate = self.bitrate
             self.encoder.complexity = self.complexity
-            self.encoder.signal = constants.SIGNAL_VOICE  # 语音信号优化
+            self.encoder.signal = constants.SIGNAL_VOICE  # Tối ưu tín hiệu giọng nói
         except Exception as e:
-            logging.error(f"初始化Opus编码器失败: {e}")
-            raise RuntimeError("初始化失败") from e
+            logging.error(f"Khởi tạo bộ mã hoá Opus thất bại: {e}")
+            raise RuntimeError("Khởi tạo thất bại") from e
 
     def reset_state(self):
-        """重置编码器状态"""
+        """Đặt lại trạng thái bộ mã hoá"""
         self.encoder.reset_state()
         self.buffer = np.array([], dtype=np.int16)
 
     def encode_pcm_to_opus_stream(self, pcm_data: bytes, end_of_stream: bool, callback: Callable[[Any], Any]):
         """
-        将PCM数据编码为Opus格式，以流式方式进行处理
+        Mã hoá dữ liệu PCM thành định dạng Opus, xử lý theo kiểu streaming
 
         Args:
-            pcm_data: PCM字节数据
-            end_of_stream: 是否为流的结束,
-            callback: opus处理方法
+            pcm_data: Dữ liệu byte PCM
+            end_of_stream: Có phải cuối luồng,
+            callback: Phương thức xử lý opus
 
         Returns:
-            Opus数据包列表
+            Danh sách gói Opus
         """
-        # 将字节数据转换为short数组
+        # Chuyển dữ liệu byte thành mảng short
         new_samples = self._convert_bytes_to_shorts(pcm_data)
 
-        # 校验PCM数据
+        # Kiểm tra dữ liệu PCM
         self._validate_pcm_data(new_samples)
 
-        # 将新数据追加到缓冲区
+        # Thêm dữ liệu mới vào bộ đệm
         self.buffer = np.append(self.buffer, new_samples)
 
         offset = 0
 
-        # 处理所有完整帧
+        # Xử lý mọi frame đầy đủ
         while offset <= len(self.buffer) - self.total_frame_size:
             frame = self.buffer[offset : offset + self.total_frame_size]
             output = self._encode(frame)
@@ -85,12 +85,12 @@ class OpusEncoderUtils:
                 callback(output)
             offset += self.total_frame_size
 
-        # 保留未处理的样本
+        # Giữ lại các mẫu chưa xử lý
         self.buffer = self.buffer[offset:]
 
-        # 流结束时处理剩余数据
+        # Xử lý dữ liệu còn lại khi luồng kết thúc
         if end_of_stream and len(self.buffer) > 0:
-            # 创建最后一帧并用0填充
+            # Tạo frame cuối cùng và điền 0
             last_frame = np.zeros(self.total_frame_size, dtype=np.int16)
             last_frame[: len(self.buffer)] = self.buffer
 
@@ -100,37 +100,37 @@ class OpusEncoderUtils:
             self.buffer = np.array([], dtype=np.int16)
 
     def _encode(self, frame: np.ndarray) -> Optional[bytes]:
-        """编码一帧音频数据"""
+        """Mã hoá một frame dữ liệu audio"""
         try:
-            # 编码器已释放，跳过编码
+            # Bộ mã hoá đã giải phóng, bỏ qua mã hoá
             if not hasattr(self, 'encoder') or self.encoder is None:
                 return None
-            # 将numpy数组转换为bytes
+            # Chuyển mảng numpy thành bytes
             frame_bytes = frame.tobytes()
-            # opuslib要求输入字节数必须是channels*2的倍数
+            # opuslib yêu cầu số byte đầu vào phải là bội số của channels*2
             encoded = self.encoder.encode(frame_bytes, self.frame_size)
             return encoded
         except Exception as e:
-            logging.error(f"Opus编码失败: {e}")
+            logging.error(f"Mã hoá Opus thất bại: {e}")
             traceback.print_exc()
             return None
 
     def _convert_bytes_to_shorts(self, bytes_data: bytes) -> np.ndarray:
-        """将字节数组转换为short数组 (16位PCM)"""
-        # 假设输入是小端字节序的16位PCM
+        """Chuyển mảng byte thành mảng short (PCM 16-bit)"""
+        # Giả định đầu vào là PCM 16-bit little-endian
         return np.frombuffer(bytes_data, dtype=np.int16)
 
     def _validate_pcm_data(self, pcm_shorts: np.ndarray) -> None:
-        """验证PCM数据是否有效"""
-        # 16位PCM数据范围是 -32768 到 32767
+        """Kiểm tra dữ liệu PCM có hợp lệ"""
+        # Phạm vi dữ liệu PCM 16-bit là -32768 đến 32767
         if np.any((pcm_shorts < -32768) | (pcm_shorts > 32767)):
             invalid_samples = pcm_shorts[(pcm_shorts < -32768) | (pcm_shorts > 32767)]
-            logging.warning(f"发现无效PCM样本: {invalid_samples[:5]}...")
-            # 在实际应用中可以选择裁剪而不是抛出异常
+            logging.warning(f"Phát hiện mẫu PCM không hợp lệ: {invalid_samples[:5]}...")
+            # Trong ứng dụng thực tế có thể chọn cắt (clip) thay vì ném ngoại lệ
             # np.clip(pcm_shorts, -32768, 32767, out=pcm_shorts)
 
     def close(self):
-        """关闭编码器并释放资源"""
+        """Đóng bộ mã hoá và giải phóng tài nguyên"""
         if hasattr(self, 'encoder') and self.encoder:
             try:
                 del self.encoder

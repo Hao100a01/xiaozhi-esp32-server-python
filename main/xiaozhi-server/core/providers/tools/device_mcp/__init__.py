@@ -1,4 +1,4 @@
-"""设备端MCP工具模块"""
+"""Module công cụ MCP phía thiết bị"""
 
 from .mcp_client import MCPClient
 from .mcp_handler import (

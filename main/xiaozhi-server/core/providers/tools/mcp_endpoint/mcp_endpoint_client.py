@@ -1,4 +1,4 @@
-"""MCP接入点客户端定义"""
+"""Định nghĩa client điểm truy cập MCP"""
 
 import asyncio
 from concurrent.futures import Future
@@ -10,7 +10,7 @@ logger = setup_logging()
 
 
 class MCPEndpointClient:
-    """MCP接入点客户端，用于管理MCP接入点状态和工具"""
+    """Client điểm truy cập MCP, dùng để quản lý trạng thái và công cụ của điểm truy cập MCP"""
 
     def __init__(self, conn=None):
         self.conn = conn
@@ -21,7 +21,7 @@ class MCPEndpointClient:
         self.next_id = 1
         self.lock = asyncio.Lock()
         self._cached_available_tools = None  # Cache for get_available_tools
-        self.websocket = None  # WebSocket连接
+        self.websocket = None  # Kết nối WebSocket
 
     def has_tool(self, name: str) -> bool:
         return name in self.tools
@@ -95,18 +95,18 @@ class MCPEndpointClient:
                 self.call_results.pop(id)
 
     def set_websocket(self, websocket):
-        """设置WebSocket连接"""
+        """Thiết lập kết nối WebSocket"""
         self.websocket = websocket
 
     async def send_message(self, message: str):
-        """发送消息到MCP接入点"""
+        """Gửi thông điệp tới điểm truy cập MCP"""
         if self.websocket:
             await self.websocket.send(message)
         else:
-            raise RuntimeError("WebSocket连接未建立")
+            raise RuntimeError("Kết nối WebSocket chưa được thiết lập")
 
     async def close(self):
-        """关闭WebSocket连接"""
+        """Đóng kết nối WebSocket"""
         if self.websocket:
             await self.websocket.close()
             self.websocket = None

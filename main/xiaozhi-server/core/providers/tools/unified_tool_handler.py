@@ -1,4 +1,4 @@
-"""统一工具处理器"""
+"""Bộ xử lý công cụ thống nhất"""
 
 import json
 from typing import Dict, List, Any, Optional
@@ -17,24 +17,24 @@ from core.handle.sendAudioHandle import send_display_message
 
 
 class UnifiedToolHandler:
-    """统一工具处理器"""
+    """Bộ xử lý công cụ thống nhất"""
 
     def __init__(self, conn):
         self.conn = conn
         self.config = conn.config
         self.logger = setup_logging()
 
-        # 创建工具管理器
+        # Tạo trình quản lý công cụ
         self.tool_manager = ToolManager(conn)
 
-        # 创建各类执行器
+        # Tạo các loại bộ thực thi
         self.server_plugin_executor = ServerPluginExecutor(conn)
         self.server_mcp_executor = ServerMCPExecutor(conn)
         self.device_iot_executor = DeviceIoTExecutor(conn)
         self.device_mcp_executor = DeviceMCPExecutor(conn)
         self.mcp_endpoint_executor = MCPEndpointExecutor(conn)
 
-        # 注册执行器
+        # Đăng ký bộ thực thi
         self.tool_manager.register_executor(
             ToolType.SERVER_PLUGIN, self.server_plugin_executor
         )
@@ -51,39 +51,39 @@ class UnifiedToolHandler:
             ToolType.MCP_ENDPOINT, self.mcp_endpoint_executor
         )
 
-        # 初始化标志
+        # Cờ khởi tạo
         self.finish_init = False
 
     async def _initialize(self):
-        """异步初始化"""
+        """Khởi tạo bất đồng bộ"""
         try:
-            # 自动导入插件模块
+            # Tự động nhập module plugin
             auto_import_modules("plugins_func.functions")
 
-            # 初始化服务端MCP
+            # Khởi tạo MCP phía máy chủ
             await self.server_mcp_executor.initialize()
 
-            # 初始化MCP接入点
+            # Khởi tạo điểm truy cập MCP
             await self._initialize_mcp_endpoint()
 
-            # 初始化Home Assistant（如果需要）
+            # Khởi tạo Home Assistant (nếu cần)
             self._initialize_home_assistant()
 
             self.finish_init = True
-            self.logger.debug("统一工具处理器初始化完成")
+            self.logger.debug("Khởi tạo bộ xử lý công cụ thống nhất hoàn tất")
 
-            # 输出当前支持的所有工具列表
+            # Xuất danh sách mọi công cụ hiện được hỗ trợ
             self.current_support_functions()
 
         except Exception as e:
-            self.logger.error(f"统一工具处理器初始化失败: {e}")
+            self.logger.error(f"Khởi tạo bộ xử lý công cụ thống nhất thất bại: {e}")
 
     async def _initialize_mcp_endpoint(self):
-        """初始化MCP接入点"""
+        """Khởi tạo điểm truy cập MCP"""
         try:
             from .mcp_endpoint import connect_mcp_endpoint
 
-            # 从配置中获取MCP接入点URL
+            # Lấy URL điểm truy cập MCP từ cấu hình
             mcp_endpoint_url = self.config.get("mcp_endpoint", "")
 
             if (
@@ -91,57 +91,57 @@ class UnifiedToolHandler:
                 and "你的" not in mcp_endpoint_url
                 and mcp_endpoint_url != "null"
             ):
-                self.logger.info(f"正在初始化MCP接入点: {mcp_endpoint_url}")
+                self.logger.info(f"Đang khởi tạo điểm truy cập MCP: {mcp_endpoint_url}")
                 mcp_endpoint_client = await connect_mcp_endpoint(
                     mcp_endpoint_url, self.conn
                 )
 
                 if mcp_endpoint_client:
-                    # 将MCP接入点客户端保存到连接对象中
+                    # Lưu client điểm truy cập MCP vào đối tượng kết nối
                     self.conn.mcp_endpoint_client = mcp_endpoint_client
-                    self.logger.info("MCP接入点初始化成功")
+                    self.logger.info("Khởi tạo điểm truy cập MCP thành công")
                 else:
-                    self.logger.warning("MCP接入点初始化失败")
+                    self.logger.warning("Khởi tạo điểm truy cập MCP thất bại")
 
         except Exception as e:
-            self.logger.error(f"初始化MCP接入点失败: {e}")
+            self.logger.error(f"Khởi tạo điểm truy cập MCP thất bại: {e}")
 
     def _initialize_home_assistant(self):
-        """初始化Home Assistant提示词"""
+        """Khởi tạo prompt Home Assistant"""
         try:
             from plugins_func.functions.hass_init import append_devices_to_prompt
 
             append_devices_to_prompt(self.conn)
         except ImportError:
-            pass  # 忽略导入错误
+            pass  # Bỏ qua lỗi nhập
         except Exception as e:
-            self.logger.error(f"初始化Home Assistant失败: {e}")
+            self.logger.error(f"Khởi tạo Home Assistant thất bại: {e}")
 
     def get_functions(self) -> List[Dict[str, Any]]:
-        """获取所有工具的函数描述"""
+        """Lấy mô tả hàm của mọi công cụ"""
         return self.tool_manager.get_function_descriptions()
 
     def current_support_functions(self) -> List[str]:
-        """获取当前支持的函数名称列表"""
+        """Lấy danh sách tên hàm hiện được hỗ trợ"""
         func_names = self.tool_manager.get_supported_tool_names()
-        self.logger.info(f"当前支持的函数列表: {func_names}")
+        self.logger.info(f"Danh sách hàm hiện được hỗ trợ: {func_names}")
         return func_names
 
     def upload_functions_desc(self):
-        """刷新函数描述列表"""
+        """Làm mới danh sách mô tả hàm"""
         self.tool_manager.refresh_tools()
-        self.logger.info("函数描述列表已刷新")
+        self.logger.info("Danh sách mô tả hàm đã được làm mới")
 
     def has_tool(self, tool_name: str) -> bool:
-        """检查是否有指定工具"""
+        """Kiểm tra có công cụ được chỉ định không"""
         return self.tool_manager.has_tool(tool_name)
 
     async def handle_llm_function_call(
         self, conn, function_call_data: Dict[str, Any]
     ) -> Optional[ActionResponse]:
-        """处理LLM函数调用"""
+        """Xử lý lệnh gọi hàm của LLM"""
         try:
-            # 处理多函数调用
+            # Xử lý gọi nhiều hàm
             if "function_calls" in function_call_data:
                 responses = []
                 for call in function_call_data["function_calls"]:
@@ -151,48 +151,48 @@ class UnifiedToolHandler:
                     responses.append(result)
                 return self._combine_responses(responses)
 
-            # 处理单函数调用
+            # Xử lý gọi một hàm
             function_name = function_call_data["name"]
             arguments = function_call_data.get("arguments", {})
 
-            # 如果arguments是字符串，尝试解析为JSON
+            # Nếu arguments là chuỗi, thử phân tích thành JSON
             if isinstance(arguments, str):
                 try:
                     arguments = json.loads(arguments) if arguments else {}
                 except json.JSONDecodeError:
-                    self.logger.error(f"无法解析函数参数: {arguments}")
+                    self.logger.error(f"Không thể phân tích tham số hàm: {arguments}")
                     return ActionResponse(
                         action=Action.ERROR,
-                        response="无法解析函数参数",
+                        response="Không thể phân tích tham số hàm",
                     )
 
-            self.logger.debug(f"调用函数: {function_name}, 参数: {arguments}")
+            self.logger.debug(f"Gọi hàm: {function_name}, tham số: {arguments}")
 
-            # 发送工具调用显示消息到设备
+            # Gửi thông điệp hiển thị gọi công cụ tới thiết bị
             try:
                 await send_display_message(self.conn, f"% {function_name}")
             except Exception as e:
-                self.logger.warning(f"发送工具调用显示消息失败: {e}")
+                self.logger.warning(f"Gửi thông điệp hiển thị gọi công cụ thất bại: {e}")
 
-            # 执行工具调用
+            # Thực thi lệnh gọi công cụ
             result = await self.tool_manager.execute_tool(function_name, arguments)
             return result
 
         except Exception as e:
-            self.logger.error(f"处理function call错误: {e}")
+            self.logger.error(f"Lỗi xử lý function call: {e}")
             return ActionResponse(action=Action.ERROR, response=str(e))
 
     def _combine_responses(self, responses: List[ActionResponse]) -> ActionResponse:
-        """合并多个函数调用的响应"""
+        """Gộp phản hồi của nhiều lệnh gọi hàm"""
         if not responses:
-            return ActionResponse(action=Action.NONE, response="无响应")
+            return ActionResponse(action=Action.NONE, response="Không có phản hồi")
 
-        # 如果有任何错误，返回第一个错误
+        # Nếu có bất kỳ lỗi nào, trả về lỗi đầu tiên
         for response in responses:
             if response.action == Action.ERROR:
                 return response
 
-        # 合并所有成功的响应
+        # Gộp mọi phản hồi thành công
         contents = []
         responses_text = []
 
@@ -202,7 +202,7 @@ class UnifiedToolHandler:
             if response.response:
                 responses_text.append(response.response)
 
-        # 确定最终的动作类型
+        # Xác định kiểu hành động cuối cùng
         final_action = Action.RESPONSE
         for response in responses:
             if response.action == Action.REQLLM:
@@ -216,27 +216,27 @@ class UnifiedToolHandler:
         )
 
     async def register_iot_tools(self, descriptors: List[Dict[str, Any]]):
-        """注册IoT设备工具"""
+        """Đăng ký công cụ thiết bị IoT"""
         self.device_iot_executor.register_iot_tools(descriptors)
         self.tool_manager.refresh_tools()
-        self.logger.info(f"注册了{len(descriptors)}个IoT设备的工具")
+        self.logger.info(f"Đã đăng ký công cụ của {len(descriptors)} thiết bị IoT")
 
     def get_tool_statistics(self) -> Dict[str, int]:
-        """获取工具统计信息"""
+        """Lấy thông tin thống kê công cụ"""
         return self.tool_manager.get_tool_statistics()
 
     async def cleanup(self):
-        """清理资源"""
+        """Dọn dẹp tài nguyên"""
         try:
             await self.server_mcp_executor.cleanup()
 
-            # 清理MCP接入点连接
+            # Dọn dẹp kết nối điểm truy cập MCP
             if (
                 hasattr(self.conn, "mcp_endpoint_client")
                 and self.conn.mcp_endpoint_client
             ):
                 await self.conn.mcp_endpoint_client.close()
 
-            self.logger.info("工具处理器清理完成")
+            self.logger.info("Dọn dẹp bộ xử lý công cụ hoàn tất")
         except Exception as e:
-            self.logger.error(f"工具处理器清理失败: {e}")
+            self.logger.error(f"Dọn dẹp bộ xử lý công cụ thất bại: {e}")

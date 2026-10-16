@@ -23,13 +23,13 @@ class ASRProvider(ASRProviderBase):
         self.text = ""
         self.asr_ws = None
         self.forward_task = None
-        self.is_processing = False  # 添加处理状态标志
-        self._is_stopping = False  # 添加停止标志，防止竞态条件
+        self.is_processing = False  # Thêm cờ trạng thái xử lý
+        self._is_stopping = False  # Thêm cờ dừng, tránh race condition
 
-        # 配置参数
+        # Tham số cấu hình
         self.appid = str(config.get("appid"))
         self.access_token = config.get("access_token")
-        # 资源ID，用于区分不同的ASR模型（默认1.0模型小时版，v2版本使用seed-asr）
+        # ID tài nguyên, dùng để phân biệt các mô hình ASR (mặc định bản giờ mô hình 1.0, bản v2 dùng seed-asr)
         self.resource_id = config.get("resource_id", "volc.bigasr.sauc.duration")
 
         self.boosting_table_name = config.get("boosting_table_name", "")
@@ -37,7 +37,7 @@ class ASRProvider(ASRProviderBase):
         self.output_dir = config.get("output_dir", "tmp/")
         self.delete_audio_file = delete_audio_file
 
-        # 火山引擎ASR配置
+        # Cấu hình ASR Volcano Engine
         enable_multilingual = config.get("enable_multilingual", False)
         self.enable_multilingual = (
             False if str(enable_multilingual).lower() == "false" else True
@@ -54,7 +54,7 @@ class ASRProvider(ASRProviderBase):
         self.format = config.get("format", "pcm")
         self.codec = config.get("codec", "pcm")
         self.rate = config.get("sample_rate", 16000)
-        # language参数仅在多语种模式(bigmodel_nostream)下有效
+        # Tham số language chỉ có hiệu lực ở chế độ đa ngôn ngữ (bigmodel_nostream)
         self.language = config.get("language") if self.enable_multilingual else None
         self.bits = config.get("bits", 16)
         self.channel = config.get("channel", 1)
@@ -67,16 +67,16 @@ class ASRProvider(ASRProviderBase):
         await super().open_audio_channels(conn)
 
     async def receive_audio(self, conn: "ConnectionHandler", pcm_frame, audio_have_voice):
-        # 先调用父类方法处理基础逻辑
+        # Gọi phương thức lớp cha trước để xử lý logic cơ bản
         await super().receive_audio(conn, pcm_frame, audio_have_voice)
 
-        # 如果本次有声音，且之前没有建立连接
+        # Nếu lần này có âm thanh, và trước đó chưa thiết lập kết nối
         if audio_have_voice and self.asr_ws is None and not self.is_processing:
             try:
                 self.is_processing = True
-                # 建立新的WebSocket连接
+                # Thiết lập kết nối WebSocket mới
                 headers = self.token_auth() if self.auth_method == "token" else None
-                logger.bind(tag=TAG).info(f"正在连接ASR服务，headers: {headers}")
+                logger.bind(tag=TAG).info(f"Đang kết nối dịch vụ ASR, headers: {headers}")
 
                 self.asr_ws = await websockets.connect(
                     self.ws_url,
@@ -87,7 +87,7 @@ class ASRProvider(ASRProviderBase):
                     close_timeout=10,
                 )
 
-                # 发送初始化请求
+                # Gửi yêu cầu khởi tạo
                 request_params = self.construct_request(str(uuid.uuid4()))
                 try:
                     payload_bytes = str.encode(json.dumps(request_params))
@@ -96,30 +96,30 @@ class ASRProvider(ASRProviderBase):
                     full_client_request.extend((len(payload_bytes)).to_bytes(4, "big"))
                     full_client_request.extend(payload_bytes)
 
-                    logger.bind(tag=TAG).info(f"发送初始化请求: {request_params}")
+                    logger.bind(tag=TAG).info(f"Gửi yêu cầu khởi tạo: {request_params}")
                     await self.asr_ws.send(full_client_request)
 
-                    # 等待初始化响应
+                    # Chờ phản hồi khởi tạo
                     init_res = await self.asr_ws.recv()
                     result = self.parse_response(init_res)
-                    logger.bind(tag=TAG).info(f"收到初始化响应: {result}")
+                    logger.bind(tag=TAG).info(f"Đã nhận phản hồi khởi tạo: {result}")
 
-                    # 检查初始化响应
+                    # Kiểm tra phản hồi khởi tạo
                     if "code" in result and result["code"] != 1000:
-                        error_msg = f"ASR服务初始化失败: {result.get('payload_msg', {}).get('error', '未知错误')}"
+                        error_msg = f"Khởi tạo dịch vụ ASR thất bại: {result.get('payload_msg', {}).get('error', 'Lỗi không xác định')}"
                         logger.bind(tag=TAG).error(error_msg)
                         raise Exception(error_msg)
 
                 except Exception as e:
-                    logger.bind(tag=TAG).error(f"发送初始化请求失败: {str(e)}")
+                    logger.bind(tag=TAG).error(f"Gửi yêu cầu khởi tạo thất bại: {str(e)}")
                     if hasattr(e, "__cause__") and e.__cause__:
-                        logger.bind(tag=TAG).error(f"错误原因: {str(e.__cause__)}")
+                        logger.bind(tag=TAG).error(f"Nguyên nhân lỗi: {str(e.__cause__)}")
                     raise e
 
-                # 启动接收ASR结果的异步任务
+                # Khởi động tác vụ bất đồng bộ nhận kết quả ASR
                 self.forward_task = asyncio.create_task(self._forward_asr_results(conn))
 
-                # 发送缓存的音频数据
+                # Gửi dữ liệu âm thanh đã đệm
                 if conn.asr_audio and len(conn.asr_audio) > 0:
                     for cached_pcm in conn.asr_audio[-10:]:
                         try:
@@ -132,20 +132,20 @@ class ASRProvider(ASRProviderBase):
                             await self.asr_ws.send(audio_request)
                         except Exception as e:
                             logger.bind(tag=TAG).info(
-                                f"发送缓存音频数据时发生错误: {e}"
+                                f"Đã xảy ra lỗi khi gửi dữ liệu âm thanh đã đệm: {e}"
                             )
 
             except Exception as e:
-                logger.bind(tag=TAG).error(f"建立ASR连接失败: {str(e)}")
+                logger.bind(tag=TAG).error(f"Thiết lập kết nối ASR thất bại: {str(e)}")
                 if hasattr(e, "__cause__") and e.__cause__:
-                    logger.bind(tag=TAG).error(f"错误原因: {str(e.__cause__)}")
+                    logger.bind(tag=TAG).error(f"Nguyên nhân lỗi: {str(e.__cause__)}")
                 if self.asr_ws:
                     await self.asr_ws.close()
                     self.asr_ws = None
                 self.is_processing = False
                 return
 
-        # 发送当前音频数据
+        # Gửi dữ liệu âm thanh hiện tại
         if self.asr_ws and self.is_processing and not self._is_stopping:
             try:
                 payload = gzip.compress(pcm_frame)
@@ -154,50 +154,50 @@ class ASRProvider(ASRProviderBase):
                 audio_request.extend(payload)
                 await self.asr_ws.send(audio_request)
             except Exception as e:
-                logger.bind(tag=TAG).info(f"发送音频数据时发生错误: {e}")
+                logger.bind(tag=TAG).info(f"Đã xảy ra lỗi khi gửi dữ liệu âm thanh: {e}")
 
     async def _forward_asr_results(self, conn: "ConnectionHandler"):
         try:
             while self.asr_ws and not conn.stop_event.is_set():
-                # 获取当前连接的音频数据
+                # Lấy dữ liệu âm thanh của kết nối hiện tại
                 audio_data = conn.asr_audio
                 try:
                     response = await self.asr_ws.recv()
                     result = self.parse_response(response)
-                    logger.bind(tag=TAG).debug(f"收到ASR结果: {result}")
+                    logger.bind(tag=TAG).debug(f"Đã nhận kết quả ASR: {result}")
 
                     if "payload_msg" in result:
                         payload = result["payload_msg"]
-                        # 检查是否是错误码1013（无有效语音）
+                        # Kiểm tra có phải mã lỗi 1013 không (không có giọng nói hợp lệ)
                         if "code" in payload and payload["code"] == 1013:
-                            # 静默处理，不记录错误日志
+                            # Xử lý im lặng, không ghi log lỗi
                             continue
 
                         if "result" in payload:
                             utterances = payload["result"].get("utterances", [])
-                            # 检查duration和空文本的情况
+                            # Kiểm tra trường hợp duration và văn bản trống
                             if (
-                                not self.enable_multilingual  # 注意：多语种模式不返回中间结果，需要等待最终结果
+                                not self.enable_multilingual  # Lưu ý: chế độ đa ngôn ngữ không trả về kết quả trung gian, cần chờ kết quả cuối cùng
                                 and payload.get("audio_info", {}).get("duration", 0)
                                 > 2000
                                 and not utterances
                                 and not payload["result"].get("text")
                                 and conn.client_listen_mode != "manual"
                             ):
-                                logger.bind(tag=TAG).error(f"识别文本：空")
+                                logger.bind(tag=TAG).error(f"Văn bản nhận dạng: trống")
                                 self.text = ""
-                                if len(audio_data) > 15:  # 确保有足够音频数据
+                                if len(audio_data) > 15:  # Đảm bảo có đủ dữ liệu âm thanh
                                     await self.handle_voice_stop(conn, audio_data)
                                 break
 
-                            # 专门处理没有文本的识别结果（手动模式下可能已经识别完成但是没松按键）
+                            # Xử lý riêng kết quả nhận dạng không có văn bản (ở chế độ thủ công có thể đã nhận dạng xong nhưng chưa nhả phím)
                             elif not payload["result"].get("text") and not utterances:
-                                # 多语种模式会持续返回空文本，直到最后返回完整结果，所以需要排除
+                                # Chế độ đa ngôn ngữ sẽ liên tục trả về văn bản trống cho đến khi trả về kết quả đầy đủ cuối cùng, nên cần loại trừ
                                 if self.enable_multilingual:
                                     continue
 
                                 if conn.client_listen_mode == "manual" and conn.client_voice_stop and len(audio_data) > 15:
-                                    logger.bind(tag=TAG).debug("消息结束收到停止信号，触发处理")
+                                    logger.bind(tag=TAG).debug("Cuối thông điệp nhận được tín hiệu dừng, kích hoạt xử lý")
                                     await self.handle_voice_stop(conn, audio_data)
                                     break
 
@@ -205,56 +205,56 @@ class ASRProvider(ASRProviderBase):
                                 if utterance.get("definite", False):
                                     current_text = utterance["text"]
                                     logger.bind(tag=TAG).info(
-                                        f"识别到文本: {current_text}"
+                                        f"Nhận dạng được văn bản: {current_text}"
                                     )
 
-                                    # 手动模式下累积识别结果
+                                    # Tích luỹ kết quả nhận dạng ở chế độ thủ công
                                     if conn.client_listen_mode == "manual":
                                         if self.text:
                                             self.text += current_text
                                         else:
                                             self.text = current_text
 
-                                        # 在接收消息中途时收到停止信号
+                                        # Nhận tín hiệu dừng giữa chừng khi đang nhận thông điệp
                                         if conn.client_voice_stop and len(audio_data) > 0:
-                                            logger.bind(tag=TAG).debug("消息中途收到停止信号，触发处理")
+                                            logger.bind(tag=TAG).debug("Nhận tín hiệu dừng giữa chừng thông điệp, kích hoạt xử lý")
                                             await self.handle_voice_stop(conn, audio_data)
                                         break
                                     else:
-                                        # 自动模式下直接覆盖
+                                        # Ở chế độ tự động ghi đè trực tiếp
                                         self.text = current_text
-                                        if len(audio_data) > 15:  # 确保有足够音频数据
+                                        if len(audio_data) > 15:  # Đảm bảo có đủ dữ liệu âm thanh
                                             await self.handle_voice_stop(
                                                 conn, audio_data
                                             )
                                     break
                         elif "error" in payload:
-                            error_msg = payload.get("error", "未知错误")
-                            logger.bind(tag=TAG).error(f"ASR服务返回错误: {error_msg}")
+                            error_msg = payload.get("error", "Lỗi không xác định")
+                            logger.bind(tag=TAG).error(f"Dịch vụ ASR trả về lỗi: {error_msg}")
                             break
 
                 except websockets.ConnectionClosed:
-                    logger.bind(tag=TAG).info("ASR服务连接已关闭")
+                    logger.bind(tag=TAG).info("Kết nối dịch vụ ASR đã đóng")
                     self.is_processing = False
                     break
                 except Exception as e:
-                    logger.bind(tag=TAG).error(f"处理ASR结果时发生错误: {str(e)}")
+                    logger.bind(tag=TAG).error(f"Đã xảy ra lỗi khi xử lý kết quả ASR: {str(e)}")
                     if hasattr(e, "__cause__") and e.__cause__:
-                        logger.bind(tag=TAG).error(f"错误原因: {str(e.__cause__)}")
+                        logger.bind(tag=TAG).error(f"Nguyên nhân lỗi: {str(e.__cause__)}")
                     self.is_processing = False
                     break
 
         except Exception as e:
-            logger.bind(tag=TAG).error(f"ASR结果转发任务发生错误: {str(e)}")
+            logger.bind(tag=TAG).error(f"Tác vụ chuyển tiếp kết quả ASR đã xảy ra lỗi: {str(e)}")
             if hasattr(e, "__cause__") and e.__cause__:
-                logger.bind(tag=TAG).error(f"错误原因: {str(e.__cause__)}")
+                logger.bind(tag=TAG).error(f"Nguyên nhân lỗi: {str(e.__cause__)}")
         finally:
             if self.asr_ws:
                 await self.asr_ws.close()
                 self.asr_ws = None
             self.is_processing = False
             self._is_stopping = False
-            # 重置所有音频相关状态
+            # Đặt lại mọi trạng thái liên quan đến âm thanh
             conn.reset_audio_states()
 
     def stop_ws_connection(self):
@@ -265,11 +265,11 @@ class ASRProvider(ASRProviderBase):
         self._is_stopping = False
 
     async def _send_stop_request(self):
-        """发送最后一个音频帧以通知服务器结束"""
-        self._is_stopping = True  # 先标记为停止状态，阻止后续音频发送
+        """Gửi khung âm thanh cuối cùng để thông báo máy chủ kết thúc"""
+        self._is_stopping = True  # Đánh dấu trạng thái dừng trước, ngăn gửi âm thanh tiếp theo
         if self.asr_ws:
             try:
-                # 发送结束标记的音频帧（gzip压缩的空数据）
+                # Gửi khung âm thanh đánh dấu kết thúc (dữ liệu trống nén gzip)
                 empty_payload = gzip.compress(b"")
                 last_audio_request = bytearray(
                     self.generate_last_audio_default_header()
@@ -277,9 +277,9 @@ class ASRProvider(ASRProviderBase):
                 last_audio_request.extend(len(empty_payload).to_bytes(4, "big"))
                 last_audio_request.extend(empty_payload)
                 await self.asr_ws.send(last_audio_request)
-                logger.bind(tag=TAG).debug("已发送结束音频帧")
+                logger.bind(tag=TAG).debug("Đã gửi khung âm thanh kết thúc")
             except Exception as e:
-                logger.bind(tag=TAG).debug(f"发送结束音频帧时出错: {e}")
+                logger.bind(tag=TAG).debug(f"Lỗi khi gửi khung âm thanh kết thúc: {e}")
 
     def construct_request(self, reqid):
         req = {
@@ -310,12 +310,12 @@ class ASRProvider(ASRProviderBase):
             },
         }
 
-        # language参数仅在多语种模式下添加
+        # Tham số language chỉ được thêm ở chế độ đa ngôn ngữ
         if self.enable_multilingual and self.language:
             req["audio"]["language"] = self.language
 
         logger.bind(tag=TAG).debug(
-            f"构造请求参数: {json.dumps(req, ensure_ascii=False)}"
+            f"Tạo tham số yêu cầu: {json.dumps(req, ensure_ascii=False)}"
         )
         return req
 
@@ -366,16 +366,16 @@ class ASRProvider(ASRProviderBase):
 
     def parse_response(self, res: bytes) -> dict:
         try:
-            # 检查响应长度
+            # Kiểm tra độ dài phản hồi
             if len(res) < 4:
-                logger.bind(tag=TAG).error(f"响应数据长度不足: {len(res)}")
-                return {"error": "响应数据长度不足"}
+                logger.bind(tag=TAG).error(f"Độ dài dữ liệu phản hồi không đủ: {len(res)}")
+                return {"error": "Độ dài dữ liệu phản hồi không đủ"}
 
-            # 获取消息头
+            # Lấy header thông điệp
             header = res[:4]
             message_type = header[1] >> 4
 
-            # 如果是错误响应
+            # Nếu là phản hồi lỗi
             if message_type == 0x0F:  # SERVER_ERROR_RESPONSE
                 code = int.from_bytes(res[4:8], "big", signed=False)
                 msg_length = int.from_bytes(res[8:12], "big", signed=False)
@@ -386,37 +386,37 @@ class ASRProvider(ASRProviderBase):
                     "payload_msg": error_msg,
                 }
 
-            # 获取JSON数据
+            # Lấy dữ liệu JSON
             try:
-                # 检查字节8-11是否为有效的JSON长度字段
-                # 格式：4字节头 + 4字节序列号 + 4字节长度 + JSON数据
+                # Kiểm tra byte 8-11 có phải trường độ dài JSON hợp lệ không
+                # Định dạng: header 4 byte + số thứ tự 4 byte + độ dài 4 byte + dữ liệu JSON
                 length = int.from_bytes(res[8:12], "big")
                 if length > 0 and length <= len(res) - 12:
-                    # 有长度字段，从字节12开始读取指定长度的JSON
+                    # Có trường độ dài, đọc JSON với độ dài chỉ định từ byte 12
                     json_data = res[12:12 + length].decode("utf-8")
                 else:
-                    # 无长度字段或长度无效，尝试直接解析
+                    # Không có trường độ dài hoặc độ dài không hợp lệ, thử phân tích trực tiếp
                     json_data = res[8:].decode("utf-8")
                 result = json.loads(json_data)
-                logger.bind(tag=TAG).debug(f"成功解析JSON响应: {result}")
+                logger.bind(tag=TAG).debug(f"Phân tích phản hồi JSON thành công: {result}")
                 return {"payload_msg": result}
             except (UnicodeDecodeError, json.JSONDecodeError) as e:
-                logger.bind(tag=TAG).error(f"JSON解析失败: {str(e)}")
-                logger.bind(tag=TAG).error(f"原始数据: {res}")
+                logger.bind(tag=TAG).error(f"Phân tích JSON thất bại: {str(e)}")
+                logger.bind(tag=TAG).error(f"Dữ liệu gốc: {res}")
                 raise
 
         except Exception as e:
-            logger.bind(tag=TAG).error(f"解析响应失败: {str(e)}")
-            logger.bind(tag=TAG).error(f"原始响应数据: {res.hex()}")
+            logger.bind(tag=TAG).error(f"Phân tích phản hồi thất bại: {str(e)}")
+            logger.bind(tag=TAG).error(f"Dữ liệu phản hồi gốc: {res.hex()}")
             raise
 
     async def speech_to_text(self, opus_data, session_id, artifacts=None):
         result = self.text
-        self.text = ""  # 清空text
+        self.text = ""  # Xoá text
         return result, None
 
     async def close(self):
-        """资源清理方法"""
+        """Phương thức dọn dẹp tài nguyên"""
         if self.asr_ws:
             await self.asr_ws.close()
             self.asr_ws = None

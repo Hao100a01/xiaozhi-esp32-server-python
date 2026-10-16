@@ -14,10 +14,10 @@ class DefaultTTS(TTSProviderBase):
             os.makedirs(self.output_dir)
 
     def generate_filename(self):
-        """生成唯一的音频文件名"""
+        """Tạo tên tệp âm thanh duy nhất"""
         import uuid
 
         return os.path.join(self.output_dir, f"{uuid.uuid4()}.wav")
 
     async def text_to_speak(self, text, output_file):
-        logger.bind(tag=TAG).error(f"无法实例化 TTS 服务，请检查配置")
+        logger.bind(tag=TAG).error(f"Không thể khởi tạo dịch vụ TTS, vui lòng kiểm tra cấu hình")

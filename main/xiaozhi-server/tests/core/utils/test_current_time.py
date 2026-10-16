@@ -27,8 +27,8 @@ def test_get_current_date_format_is_iso():
 
 
 @freeze_time("2026-09-02 10:30:00")  # 2026-09-02 is a Wednesday
-def test_get_current_weekday_returns_chinese_label():
-    assert current_time.get_current_weekday() == "星期三"
+def test_get_current_weekday_returns_vietnamese_label():
+    assert current_time.get_current_weekday() == "Thứ Tư"
 
 
 def test_weekday_map_has_all_seven_days():
@@ -46,7 +46,7 @@ def test_get_current_time_info_returns_four_tuple():
     time_str, date_str, weekday, lunar = info
     assert time_str == "10:30"
     assert date_str == "2026-09-02"
-    assert weekday == "星期三"
+    assert weekday == "Thứ Tư"
     assert "年" in lunar  # lunar output contains "年"
 
 

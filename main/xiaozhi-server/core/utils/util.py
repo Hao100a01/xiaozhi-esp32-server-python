@@ -20,14 +20,14 @@ from typing import Callable, Any
 TAG = __name__
 
 
-# 绕开 IDE（Trae CN 等）注入的精简版 ffmpeg/ffprobe PATH 占位：调用期间把
-# Python 解释器同目录的 bin 加到 PATH 前缀，pydub.utils.which() 会优先找到
-# conda env 自带的完整版，调用结束恢复原 PATH，不污染 import 后的全局。
-# 环境变量 XIAOZHI_PYDUB_OVERRIDE_FFMPEG=0 时关闭。
+# Bỏ qua placeholder PATH ffmpeg/ffprobe bản rút gọn do IDE (Trae CN v.v.) inject: trong lúc gọi thì đưa
+# bin cùng thư mục với trình thông dịch Python lên tiền tố PATH, pydub.utils.which() sẽ ưu tiên tìm thấy
+# bản đầy đủ đi kèm conda env, gọi xong khôi phục PATH gốc, không làm bẩn toàn cục sau import.
+# Tắt khi biến môi trường XIAOZHI_PYDUB_OVERRIDE_FFMPEG=0.
 #
-# 引用计数 + 锁：多线程并发进出 with 块时，只在第一个进入时记下原始 PATH
-# 并改写，ref_count 归零时才恢复。这样 finally 不会因多次保存/恢复错位
-# 导致 bin 前缀永久残留，也避免 try/finally 契约被多 thread 互相覆盖。
+# Đếm tham chiếu + lock: khi đa thread ra vào khối with đồng thời, chỉ ghi lại PATH gốc ở lần vào đầu tiên
+# rồi viết lại, chỉ khôi phục khi ref_count về 0. Như vậy finally không bị lệch do lưu/khôi phục nhiều lần
+# gây tiền tố bin tồn tại vĩnh viễn, cũng tránh hợp đồng try/finally bị các thread ghi đè lẫn nhau.
 _ffmpeg_path_lock = threading.Lock()
 _ffmpeg_ref_count = 0
 _ffmpeg_original_path: str | None = None
@@ -61,7 +61,7 @@ def _ffmpeg_path_override():
                 _ffmpeg_original_path = None
 
 
-# 委托给 util.ffmpeg_path_override，import util 后调用方一行就能用
+# Uỷ thác cho util.ffmpeg_path_override, sau khi import util bên gọi chỉ cần một dòng là dùng được
 ffmpeg_path_override = _ffmpeg_path_override
 
 
@@ -123,22 +123,22 @@ def is_private_ip(ip_addr):
 
 def get_ip_info(ip_addr, logger):
     try:
-        # 导入全局缓存管理器
+        # Import bộ quản lý cache toàn cục
         from core.utils.cache.manager import cache_manager, CacheType
 
-        # 先从缓存获取
+        # Lấy từ cache trước
         cached_ip_info = cache_manager.get(CacheType.IP_INFO, ip_addr)
         if cached_ip_info is not None:
             return cached_ip_info
 
-        # 缓存未命中，调用API
+        # Cache miss, gọi API
         if is_private_ip(ip_addr):
             ip_addr = ""
         url = f"https://whois.pconline.com.cn/ipJson.jsp?json=true&ip={ip_addr}"
         resp = requests.get(url).json()
         ip_info = {"city": resp.get("city")}
 
-        # 存入缓存
+        # Lưu vào cache
         cache_manager.set(CacheType.IP_INFO, ip_addr, ip_info)
         return ip_info
     except Exception as e:
@@ -147,21 +147,21 @@ def get_ip_info(ip_addr, logger):
 
 
 def write_json_file(file_path, data):
-    """将数据写入 JSON 文件"""
+    """Ghi dữ liệu ra file JSON"""
     with open(file_path, "w", encoding="utf-8") as file:
         json.dump(data, file, ensure_ascii=False, indent=4)
 
 
 def remove_punctuation_and_length(text):
-    # 全角符号和半角符号的Unicode范围
+    # Phạm vi Unicode của ký tự full-width và half-width
     full_width_punctuations = (
         "！＂＃＄％＆＇（）＊＋，－。／：；＜＝＞？＠［＼］＾＿｀｛｜｝～"
     )
     half_width_punctuations = r'!"#$%&\'()*+,-./:;<=>?@[\]^_`{|}~'
-    space = " "  # 半角空格
-    full_width_space = "　"  # 全角空格
+    space = " "  # Dấu cách half-width
+    full_width_space = "　"  # Dấu cách full-width
 
-    # 去除全角和半角符号以及空格
+    # Loại bỏ ký tự full-width/half-width và dấu cách
     result = "".join(
         [
             char
@@ -180,18 +180,18 @@ def remove_punctuation_and_length(text):
 
 def check_model_key(modelType, modelKey):
     if "你" in modelKey:
-        return f"配置错误: {modelType} 的 API key 未设置,当前值为: {modelKey}"
+        return f"Lỗi cấu hình: API key của {modelType} chưa được đặt, giá trị hiện tại: {modelKey}"
     return None
 
 
 def parse_string_to_list(value, separator=";"):
     """
-    将输入值转换为列表
+    Chuyển giá trị đầu vào thành danh sách
     Args:
-        value: 输入值，可以是 None、字符串或列表
-        separator: 分隔符，默认为分号
+        value: Giá trị đầu vào, có thể là None, chuỗi hoặc danh sách
+        separator: Dấu phân tách, mặc định là dấu chấm phẩy
     Returns:
-        list: 处理后的列表
+        list: Danh sách sau xử lý
     """
     if value is None or value == "":
         return []
@@ -204,73 +204,73 @@ def parse_string_to_list(value, separator=";"):
 
 def check_ffmpeg_installed() -> bool:
     """
-    检查当前环境中是否已正确安装并可执行 ffmpeg。
+    Kiểm tra ffmpeg đã được cài đúng và có thể thực thi trong môi trường hiện tại chưa.
 
     Returns:
-        bool: 如果 ffmpeg 正常可用，返回 True；否则抛出 ValueError 异常。
+        bool: Nếu ffmpeg dùng bình thường thì trả về True; ngược lại ném ngoại lệ ValueError.
 
     Raises:
-        ValueError: 当检测到 ffmpeg 未安装或依赖缺失时，抛出详细的提示信息。
+        ValueError: Khi phát hiện ffmpeg chưa cài hoặc thiếu phụ thuộc thì ném thông tin nhắc chi tiết.
     """
     try:
-        # 尝试执行 ffmpeg 命令
+        # Thử thực thi lệnh ffmpeg
         result = subprocess.run(
             ["ffmpeg", "-version"],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True,
-            check=True,  # 非零退出码会触发 CalledProcessError
+            check=True,  # Mã thoát khác 0 sẽ kích hoạt CalledProcessError
         )
 
         output = (result.stdout + result.stderr).lower()
         if "ffmpeg version" in output:
             return True
 
-        # 如果未检测到版本信息，也视为异常情况
-        raise ValueError("未检测到有效的 ffmpeg 版本输出。")
+        # Nếu không phát hiện thông tin phiên bản thì cũng coi là trường hợp bất thường
+        raise ValueError("Không phát hiện output phiên bản ffmpeg hợp lệ.")
 
     except (subprocess.CalledProcessError, FileNotFoundError) as e:
-        # 提取错误输出
+        # Trích xuất output lỗi
         stderr_output = ""
         if isinstance(e, subprocess.CalledProcessError):
             stderr_output = (e.stderr or "").strip()
         else:
             stderr_output = str(e).strip()
 
-        # 构建基础错误提示
+        # Dựng thông báo lỗi cơ sở
         error_msg = [
-            "❌ 检测到 ffmpeg 无法正常运行。\n",
-            "建议您：",
-            "1. 确认已正确激活 conda 环境；",
-            "2. 查阅项目安装文档，了解如何在 conda 环境中安装 ffmpeg。\n",
+            "❌ Phát hiện ffmpeg không chạy bình thường.\n",
+            "Bạn nên:",
+            "1. Xác nhận đã kích hoạt đúng môi trường conda;",
+            "2. Xem tài liệu cài đặt dự án để biết cách cài ffmpeg trong môi trường conda.\n",
         ]
 
-        # 🎯 针对具体错误信息提供额外提示
+        # 🎯 Gợi ý thêm cho từng thông báo lỗi cụ thể
         if "libiconv.so.2" in stderr_output:
-            error_msg.append("⚠️ 发现缺少依赖库：libiconv.so.2")
-            error_msg.append("解决方法：在当前 conda 环境中执行：")
+            error_msg.append("⚠️ Phát hiện thiếu thư viện phụ thuộc: libiconv.so.2")
+            error_msg.append("Cách khắc phục: thực thi trong môi trường conda hiện tại:")
             error_msg.append("   conda install -c conda-forge libiconv\n")
         elif (
             "no such file or directory" in stderr_output
             and "ffmpeg" in stderr_output.lower()
         ):
-            error_msg.append("⚠️ 系统未找到 ffmpeg 可执行文件。")
-            error_msg.append("解决方法：在当前 conda 环境中执行：")
+            error_msg.append("⚠️ Hệ thống không tìm thấy file thực thi ffmpeg.")
+            error_msg.append("Cách khắc phục: thực thi trong môi trường conda hiện tại:")
             error_msg.append("   conda install -c conda-forge ffmpeg\n")
         else:
-            error_msg.append("错误详情：")
-            error_msg.append(stderr_output or "未知错误。")
+            error_msg.append("Chi tiết lỗi:")
+            error_msg.append(stderr_output or "Lỗi không xác định.")
 
-        # 抛出详细异常信息
+        # Ném thông tin ngoại lệ chi tiết
         raise ValueError("\n".join(error_msg)) from e
 
 
 def extract_json_from_string(input_string):
-    """提取字符串中的 JSON 部分"""
+    """Trích xuất phần JSON trong chuỗi"""
     pattern = r"(\{.*\})"
-    match = re.search(pattern, input_string, re.DOTALL)  # 添加 re.DOTALL
+    match = re.search(pattern, input_string, re.DOTALL)  # Thêm re.DOTALL
     if match:
-        return match.group(1)  # 返回提取的 JSON 字符串
+        return match.group(1)  # Trả về chuỗi JSON đã trích xuất
     return None
 
 
@@ -289,7 +289,7 @@ def _audio_to_data_stream_inner(
     file_type = os.path.splitext(audio_file_path)[1]
     if file_type:
         file_type = file_type.lstrip(".")
-    # -nostdin：避免 ffmpeg 阻塞等 stdin
+    # -nostdin: tránh ffmpeg chặn chờ stdin
     audio = AudioSegment.from_file(
         audio_file_path, format=file_type, parameters=["-nostdin"]
     )
@@ -301,62 +301,62 @@ async def audio_to_data(
     audio_file_path: str, is_opus: bool = True, use_cache: bool = True
 ) -> list[bytes]:
     """
-    将音频文件转换为Opus/PCM编码的帧列表
+    Chuyển file audio thành danh sách frame mã hoá Opus/PCM
     Args:
-        audio_file_path: 音频文件路径
-        is_opus: 是否进行Opus编码
-        use_cache: 是否使用缓存
+        audio_file_path: Đường dẫn file audio
+        is_opus: Có mã hoá Opus không
+        use_cache: Có dùng cache không
     """
     from core.utils.cache.manager import cache_manager
     from core.utils.cache.config import CacheType
 
-    # 生成缓存键，包含文件路径和编码类型
+    # Sinh cache key, gồm đường dẫn file và loại mã hoá
     cache_key = f"{audio_file_path}:{is_opus}"
 
-    # 尝试从缓存获取结果
+    # Thử lấy kết quả từ cache
     if use_cache:
         cached_result = cache_manager.get(CacheType.AUDIO_DATA, cache_key)
         if cached_result is not None:
             return cached_result
 
     def _sync_audio_to_data():
-        # 获取文件后缀名
+        # Lấy phần mở rộng file
         file_type = os.path.splitext(audio_file_path)[1]
         if file_type:
             file_type = file_type.lstrip(".")
-        # 读取音频文件，-nostdin 参数：不要从标准输入读取数据，否则FFmpeg会阻塞
+        # Đọc file audio, tham số -nostdin: không đọc dữ liệu từ stdin, nếu không FFmpeg sẽ chặn
         with _ffmpeg_path_override():
             audio = AudioSegment.from_file(
                 audio_file_path, format=file_type, parameters=["-nostdin"]
             )
 
-        # 转换为单声道/16kHz采样率/16位小端编码（确保与编码器匹配）
+        # Chuyển thành mono/tần số lấy mẫu 16kHz/mã hoá little-endian 16-bit (đảm bảo khớp với bộ mã hoá)
         audio = audio.set_channels(1).set_frame_rate(16000).set_sample_width(2)
 
-        # 获取原始PCM数据（16位小端）
+        # Lấy dữ liệu PCM gốc (little-endian 16-bit)
         raw_data = audio.raw_data
 
-        # 初始化Opus编码器
+        # Khởi tạo bộ mã hoá Opus
         encoder = opuslib_next.Encoder(16000, 1, opuslib_next.APPLICATION_AUDIO)
 
-        # 编码参数
+        # Tham số mã hoá
         frame_duration = 60  # 60ms per frame
         frame_size = int(16000 * frame_duration / 1000)  # 960 samples/frame
 
         datas = []
-        # 按帧处理所有音频数据（包括最后一帧可能补零）
+        # Xử lý mọi dữ liệu audio theo frame (kể cả frame cuối có thể bù 0)
         for i in range(0, len(raw_data), frame_size * 2):  # 16bit=2bytes/sample
-            # 获取当前帧的二进制数据
+            # Lấy dữ liệu nhị phân của frame hiện tại
             chunk = raw_data[i : i + frame_size * 2]
 
-            # 如果最后一帧不足，补零
+            # Nếu frame cuối không đủ thì bù 0
             if len(chunk) < frame_size * 2:
                 chunk += b"\x00" * (frame_size * 2 - len(chunk))
 
             if is_opus:
-                # 转换为numpy数组处理
+                # Chuyển thành mảng numpy để xử lý
                 np_frame = np.frombuffer(chunk, dtype=np.int16)
-                # 编码Opus数据
+                # Mã hoá dữ liệu Opus
                 frame_data = encoder.encode(np_frame.tobytes(), frame_size)
             else:
                 frame_data = chunk if isinstance(chunk, bytes) else bytes(chunk)
@@ -366,10 +366,10 @@ async def audio_to_data(
         return datas
 
     loop = asyncio.get_running_loop()
-    # 在单独的线程中执行同步的音频处理操作
+    # Thực thi thao tác xử lý audio đồng bộ trong thread riêng
     result = await loop.run_in_executor(None, _sync_audio_to_data)
 
-    # 将结果存入缓存，使用配置中定义的TTL（10分钟）
+    # Lưu kết quả vào cache, dùng TTL định nghĩa trong cấu hình (10 phút)
     if use_cache:
         cache_manager.set(CacheType.AUDIO_DATA, cache_key, result)
 
@@ -380,13 +380,13 @@ def audio_bytes_to_data_stream(
     audio_bytes, file_type, is_opus, callback: Callable[[Any], Any], sample_rate=16000, opus_encoder=None
 ) -> None:
     """
-    直接用音频二进制数据转为opus/pcm数据，支持wav、mp3、p3
+    Dùng trực tiếp dữ liệu nhị phân audio chuyển thành dữ liệu opus/pcm, hỗ trợ wav, mp3, p3
     """
     if file_type == "p3":
-        # 直接用p3解码
+        # Giải mã trực tiếp bằng p3
         return p3.decode_opus_from_bytes_stream(audio_bytes, callback)
     else:
-        # 其他格式用pydub
+        # Định dạng khác dùng pydub
         with _ffmpeg_path_override():
             audio = AudioSegment.from_file(
                 BytesIO(audio_bytes), format=file_type, parameters=["-nostdin"]
@@ -398,52 +398,52 @@ def audio_bytes_to_data_stream(
 
 def pcm_to_data_stream(raw_data, is_opus=True, callback: Callable[[Any], Any] = None, sample_rate=16000, opus_encoder=None):
     """
-    将PCM数据流式编码为Opus或直接输出PCM
+    Mã hoá streaming dữ liệu PCM thành Opus hoặc xuất trực tiếp PCM
 
     Args:
-        raw_data: PCM原始数据
-        is_opus: 是否编码为Opus
-        callback: 回调函数
-        sample_rate: 采样率
-        opus_encoder: OpusEncoderUtils对象(推荐提供以保持编码器状态连续)
+        raw_data: Dữ liệu PCM gốc
+        is_opus: Có mã hoá thành Opus không
+        callback: Hàm callback
+        sample_rate: Tần số lấy mẫu
+        opus_encoder: Đối tượng OpusEncoderUtils (nên cung cấp để giữ trạng thái bộ mã hoá liên tục)
     """
     using_temp_encoder = False
     if is_opus and opus_encoder is None:
         encoder = opuslib_next.Encoder(sample_rate, 1, opuslib_next.APPLICATION_AUDIO)
         using_temp_encoder = True
 
-    # 编码参数
+    # Tham số mã hoá
     frame_duration = 60  # 60ms per frame
     frame_size = int(sample_rate * frame_duration / 1000)  # samples/frame
 
-    # 按帧处理所有音频数据（包括最后一帧可能补零）
+    # Xử lý mọi dữ liệu audio theo frame (kể cả frame cuối có thể bù 0)
     for i in range(0, len(raw_data), frame_size * 2):  # 16bit=2bytes/sample
-        # 获取当前帧的二进制数据
+        # Lấy dữ liệu nhị phân của frame hiện tại
         chunk = raw_data[i : i + frame_size * 2]
 
-        # 如果最后一帧不足，补零
+        # Nếu frame cuối không đủ thì bù 0
         if len(chunk) < frame_size * 2:
             chunk += b"\x00" * (frame_size * 2 - len(chunk))
 
         if is_opus:
             if using_temp_encoder:
-                # 使用临时编码器（仅用于独立音频场景）
+                # Dùng bộ mã hoá tạm (chỉ cho cảnh audio độc lập)
                 np_frame = np.frombuffer(chunk, dtype=np.int16)
                 frame_data = encoder.encode(np_frame.tobytes(), frame_size)
                 callback(frame_data)
             else:
-                # 使用外部编码器（TTS流式场景,保持状态连续）
+                # Dùng bộ mã hoá ngoài (cảnh streaming TTS, giữ trạng thái liên tục)
                 is_last = (i + frame_size * 2 >= len(raw_data))
                 opus_encoder.encode_pcm_to_opus_stream(chunk, end_of_stream=is_last, callback=callback)
         else:
-            # PCM模式,直接输出
+            # Chế độ PCM, xuất trực tiếp
             frame_data = chunk if isinstance(chunk, bytes) else bytes(chunk)
             callback(frame_data)
 
 
 def opus_datas_to_wav_bytes(opus_datas, sample_rate=16000, channels=1):
     """
-    将opus帧列表解码为wav字节流
+    Giải mã danh sách frame opus thành luồng byte wav
     """
     decoder = opuslib_next.Decoder(sample_rate, channels)
     try:
@@ -453,13 +453,13 @@ def opus_datas_to_wav_bytes(opus_datas, sample_rate=16000, channels=1):
         frame_size = int(sample_rate * frame_duration / 1000)  # 960
 
         for opus_frame in opus_datas:
-            # 解码为PCM（返回bytes，2字节/采样点）
+            # Giải mã thành PCM (trả về bytes, 2 byte/điểm mẫu)
             pcm = decoder.decode(opus_frame, frame_size)
             pcm_datas.append(pcm)
 
         pcm_bytes = b"".join(pcm_datas)
 
-        # 写入wav字节流
+        # Ghi luồng byte wav
         wav_buffer = BytesIO()
         with wave.open(wav_buffer, "wb") as wf:
             wf.setnchannels(channels)
@@ -508,11 +508,11 @@ def check_asr_update(before_config, new_config):
     current_asr_module = before_config["selected_module"]["ASR"]
     new_asr_module = new_config["selected_module"]["ASR"]
 
-    # 如果模块名称不同，就需要更新
+    # Nếu tên module khác nhau thì cần cập nhật
     if current_asr_module != new_asr_module:
         return True
 
-    # 如果模块名称相同，再比较类型
+    # Nếu tên module giống nhau thì so sánh tiếp loại
     current_asr_type = (
         current_asr_module
         if "type" not in before_config["ASR"][current_asr_module]
@@ -529,11 +529,11 @@ def check_asr_update(before_config, new_config):
 
 def filter_sensitive_info(config: dict) -> dict:
     """
-    过滤配置中的敏感信息
+    Lọc thông tin nhạy cảm trong cấu hình
     Args:
-        config: 原始配置字典
+        config: Dict cấu hình gốc
     Returns:
-        过滤后的配置字典
+        Dict cấu hình sau lọc
     """
     sensitive_keys = [
         "api_key",
@@ -573,10 +573,10 @@ def filter_sensitive_info(config: dict) -> dict:
 
 
 def get_vision_url(config: dict) -> str:
-    """获取 vision URL
+    """Lấy vision URL
 
     Args:
-        config: 配置字典
+        config: Dict cấu hình
 
     Returns:
         str: vision URL
@@ -592,15 +592,15 @@ def get_vision_url(config: dict) -> str:
 
 def is_valid_image_file(file_data: bytes) -> bool:
     """
-    检查文件数据是否为有效的图片格式
+    Kiểm tra dữ liệu file có phải định dạng hình ảnh hợp lệ
 
     Args:
-        file_data: 文件的二进制数据
+        file_data: Dữ liệu nhị phân của file
 
     Returns:
-        bool: 如果是有效的图片格式返回True，否则返回False
+        bool: Trả về True nếu là định dạng hình ảnh hợp lệ, ngược lại False
     """
-    # 常见图片格式的魔数（文件头）
+    # Magic number (header file) của các định dạng hình ảnh phổ biến
     image_signatures = {
         b"\xff\xd8\xff": "JPEG",
         b"\x89PNG\r\n\x1a\n": "PNG",
@@ -612,7 +612,7 @@ def is_valid_image_file(file_data: bytes) -> bool:
         b"RIFF": "WEBP",
     }
 
-    # 检查文件头是否匹配任何已知的图片格式
+    # Kiểm tra header file có khớp định dạng hình ảnh đã biết nào
     for signature in image_signatures:
         if file_data.startswith(signature):
             return True
@@ -622,41 +622,41 @@ def is_valid_image_file(file_data: bytes) -> bool:
 
 def sanitize_tool_name(name: str) -> str:
     """Sanitize tool names for OpenAI compatibility."""
-    # 支持中文、英文字母、数字、下划线和连字符
+    # Hỗ trợ tiếng Trung, chữ cái tiếng Anh, chữ số, gạch dưới và gạch nối
     return re.sub(r"[^a-zA-Z0-9_\-\u4e00-\u9fff]", "_", name)
 
 
 def validate_mcp_endpoint(mcp_endpoint: str) -> bool:
     """
-    校验MCP接入点格式
+    Kiểm tra định dạng điểm truy cập MCP
 
     Args:
-        mcp_endpoint: MCP接入点字符串
+        mcp_endpoint: Chuỗi điểm truy cập MCP
 
     Returns:
-        bool: 是否有效
+        bool: Có hợp lệ không
     """
-    # 1. 检查是否以ws开头
+    # 1. Kiểm tra có bắt đầu bằng ws không
     if not mcp_endpoint.startswith("ws"):
         return False
 
-    # 2. 检查是否包含key、call字样
+    # 2. Kiểm tra có chứa chữ key, call không
     if "key" in mcp_endpoint.lower() or "call" in mcp_endpoint.lower():
         return False
 
-    # 3. 检查是否包含/mcp/字样
+    # 3. Kiểm tra có chứa chuỗi /mcp/ không
     if "/mcp/" not in mcp_endpoint:
         return False
 
     return True
 
 def get_system_error_response(config: dict) -> str:
-    """获取系统错误时的回复
+    """Lấy câu trả lời khi hệ thống lỗi
 
     Args:
-        config: 配置字典
+        config: Dict cấu hình
 
     Returns:
-        str: 系统错误时的回复
+        str: Câu trả lời khi hệ thống lỗi
     """
-    return config.get("system_error_response", "主人，小智现在有点忙，我们稍后再试吧。")
+    return config.get("system_error_response", "Chủ nhân ơi, Tiểu Trí giờ hơi bận, mình thử lại sau nhé.")

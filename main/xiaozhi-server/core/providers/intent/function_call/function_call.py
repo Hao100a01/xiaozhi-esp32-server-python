@@ -9,12 +9,12 @@ logger = setup_logging()
 class IntentProvider(IntentProviderBase):
     async def detect_intent(self, conn, dialogue_history: List[Dict], text: str) -> str:
         """
-        默认的意图识别实现，始终返回继续聊天
+        Triển khai nhận dạng ý định mặc định, luôn trả về tiếp tục trò chuyện
         Args:
-            dialogue_history: 对话历史记录列表
-            text: 本次对话记录
+            dialogue_history: Danh sách lịch sử hội thoại
+            text: Bản ghi hội thoại lần này
         Returns:
-            固定返回"继续聊天"
+            Luôn trả về "tiếp tục trò chuyện"
         """
         logger.bind(tag=TAG).debug(
             "Using functionCallProvider, always returning continue chat"

@@ -12,23 +12,23 @@ from core.providers.tts.dto.dto import SentenceType
 from core.utils.audioRateController import AudioRateController
 
 TAG = __name__
-# 音频帧时长（毫秒）
+# Thời lượng frame audio (mili giây)
 AUDIO_FRAME_DURATION = 60
-# 预缓冲包数量，直接发送以减少延迟
+# Số gói đệm trước, gửi trực tiếp để giảm độ trễ
 PRE_BUFFER_COUNT = 5
 
 
 async def sendAudioMessage(conn: "ConnectionHandler", sentenceType, audios, text, sentence_id=None):
-    # 跳过旧句子残留音频
+    # Bỏ qua audio còn sót của câu cũ
     if sentence_id is not None and sentence_id != conn.sentence_id:
         return
 
     if conn.tts.tts_audio_first_sentence:
-        conn.logger.bind(tag=TAG).info(f"发送第一段语音: {text}")
+        conn.logger.bind(tag=TAG).info(f"Gửi đoạn thoại đầu tiên: {text}")
         conn.tts.tts_audio_first_sentence = False
 
     if sentenceType == SentenceType.FIRST:
-        # 同一句子的后续消息加入流控队列，其他情况立即发送
+        # Message tiếp theo của cùng một câu thì vào hàng đợi điều tiết luồng, các trường hợp khác gửi ngay
         if (
             hasattr(conn, "audio_rate_controller")
             and conn.audio_rate_controller
@@ -39,16 +39,16 @@ async def sendAudioMessage(conn: "ConnectionHandler", sentenceType, audios, text
                 lambda: send_tts_message(conn, "sentence_start", text)
             )
         else:
-            # 新句子或流控器未初始化，立即发送
+            # Câu mới hoặc bộ điều tiết luồng chưa khởi tạo thì gửi ngay
             await send_tts_message(conn, "sentence_start", text)
 
     await sendAudio(conn, audios)
-    # 发送句子开始消息
+    # Gửi message bắt đầu câu
     if sentenceType is not SentenceType.MIDDLE:
-        conn.logger.bind(tag=TAG).info(f"发送音频消息: {sentenceType}, {text}")
+        conn.logger.bind(tag=TAG).info(f"Gửi message audio: {sentenceType}, {text}")
 
-    # 发送结束消息（如果是最后一个文本）
-    # 通话需要维持speaking状态
+    # Gửi message kết thúc (nếu là text cuối cùng)
+    # Cuộc gọi cần duy trì trạng thái speaking
     if not conn.calling and sentenceType == SentenceType.LAST:
         await send_tts_message(conn, "stop", None)
         if conn.close_after_chat:
@@ -57,61 +57,61 @@ async def sendAudioMessage(conn: "ConnectionHandler", sentenceType, audios, text
 
 async def _wait_for_audio_completion(conn: "ConnectionHandler"):
     """
-    等待音频队列清空并等待预缓冲包播放完成
+    Chờ hàng đợi audio rỗng và chờ các gói đệm trước phát xong
 
     Args:
-        conn: 连接对象
+        conn: Đối tượng kết nối
     """
     if hasattr(conn, "audio_rate_controller") and conn.audio_rate_controller:
         rate_controller = conn.audio_rate_controller
         send_delay_ms = conn.config.get("tts_audio_send_delay", 0)
         conn.logger.bind(tag=TAG).debug(
-            f"等待音频发送完成，队列中还有 {len(rate_controller.queue)} 个包"
+            f"Chờ gửi audio xong, trong hàng đợi còn {len(rate_controller.queue)} gói"
         )
         await rate_controller.queue_empty_event.wait()
 
         if send_delay_ms > 0:
-            # 自定义节奏：等待最后帧在客户端播放完成
+            # Nhịp tuỳ chỉnh: chờ frame cuối cùng phát xong ở client
             playback_time = 2 * rate_controller.interval_ms / 1000.0
         else:
-            # 默认节奏：前 N 帧预缓冲已直接发出，需要等待它们播放完成
+            # Nhịp mặc định: N frame đệm trước đã gửi trực tiếp, cần chờ chúng phát xong
             playback_time = (PRE_BUFFER_COUNT + 2) * rate_controller.interval_ms / 1000.0
         await asyncio.sleep(playback_time)
 
-        conn.logger.bind(tag=TAG).debug("音频发送完成")
+        conn.logger.bind(tag=TAG).debug("Gửi audio hoàn tất")
 
 
 async def _send_to_mqtt_gateway(
     conn: "ConnectionHandler", opus_packet, timestamp, sequence
 ):
     """
-    发送带16字节头部的opus数据包给mqtt_gateway，同时缓存音频用于AEC处理
+    Gửi gói opus có header 16 byte tới mqtt_gateway, đồng thời cache audio để xử lý AEC
     Args:
-        conn: 连接对象
-        opus_packet: opus数据包
-        timestamp: 时间戳
-        sequence: 序列号
+        conn: Đối tượng kết nối
+        opus_packet: Gói opus
+        timestamp: Timestamp
+        sequence: Số thứ tự
     """
-    # 如果启用了服务端AEC，缓存PCM数据用于后续AEC处理
+    # Nếu đã bật AEC phía server, cache dữ liệu PCM để xử lý AEC về sau
     if conn.client_aec and timestamp > 0:
         if not hasattr(conn, "aec_audio_cache"):
             conn.aec_audio_cache = {}
             conn.aec_audio_cache_time = {}
             conn._send_opus_decoder = opuslib_next.Decoder(16000, 1)
-        # 解码opus为PCM后缓存
+        # Giải mã opus thành PCM rồi cache
         pcm_data = conn._send_opus_decoder.decode(bytes(opus_packet), 960)
         conn.aec_audio_cache[timestamp] = bytes(pcm_data)
         conn.aec_audio_cache_time[timestamp] = time.time()
 
-    # 为opus数据包添加16字节头部
+    # Thêm header 16 byte cho gói opus
     header = bytearray(16)
     header[0] = 1  # type
     header[2:4] = len(opus_packet).to_bytes(2, "big")  # payload length
     header[4:8] = sequence.to_bytes(4, "big")  # sequence
-    header[8:12] = timestamp.to_bytes(4, "big")  # 时间戳
-    header[12:16] = len(opus_packet).to_bytes(4, "big")  # opus长度
+    header[8:12] = timestamp.to_bytes(4, "big")  # Timestamp
+    header[12:16] = len(opus_packet).to_bytes(4, "big")  # Độ dài opus
 
-    # 发送包含头部的完整数据包
+    # Gửi gói đầy đủ gồm header
     complete_packet = bytes(header) + opus_packet
     await conn.websocket.send(complete_packet)
 
@@ -120,12 +120,12 @@ async def sendAudio(
     conn: "ConnectionHandler", audios, frame_duration=AUDIO_FRAME_DURATION
 ):
     """
-    发送音频包，使用 AudioRateController 进行精确的流量控制
+    Gửi gói audio, dùng AudioRateController để điều tiết lưu lượng chính xác
 
     Args:
-        conn: 连接对象
-        audios: 单个opus包(bytes) 或 opus包列表
-        frame_duration: 帧时长（毫秒），默认使用全局常量AUDIO_FRAME_DURATION
+        conn: Đối tượng kết nối
+        audios: Một gói opus (bytes) hoặc danh sách gói opus
+        frame_duration: Thời lượng frame (mili giây), mặc định dùng hằng số toàn cục AUDIO_FRAME_DURATION
     """
     if audios is None or len(audios) == 0:
         return
@@ -133,15 +133,15 @@ async def sendAudio(
     send_delay_ms = conn.config.get("tts_audio_send_delay", 0)
     is_single_packet = isinstance(audios, bytes)
 
-    # 初始化或获取 RateController
+    # Khởi tạo hoặc lấy RateController
     rate_controller, flow_control = _get_or_create_rate_controller(
         conn, frame_duration, is_single_packet, send_delay_ms
     )
 
-    # 统一转换为列表处理
+    # Chuyển thống nhất thành danh sách để xử lý
     audio_list = [audios] if is_single_packet else audios
 
-    # 发送音频包
+    # Gửi gói audio
     await _send_audio_with_rate_control(
         conn, audio_list, rate_controller, flow_control, send_delay_ms
     )
@@ -151,33 +151,33 @@ def _get_or_create_rate_controller(
     conn: "ConnectionHandler", frame_duration, is_single_packet, send_delay_ms=0
 ):
     """
-    获取或创建 RateController 和 flow_control
+    Lấy hoặc tạo RateController và flow_control
 
     Args:
-        conn: 连接对象
-        frame_duration: 帧时长
-        is_single_packet: 是否单包模式（True: TTS流式单包, False: 批量包）
-        send_delay_ms: 自定义发送间隔（毫秒）。
+        conn: Đối tượng kết nối
+        frame_duration: Thời lượng frame
+        is_single_packet: Có phải chế độ một gói (True: một gói streaming TTS, False: gói hàng loạt)
+        send_delay_ms: Khoảng cách gửi tuỳ chỉnh (mili giây).
 
     Returns:
         (rate_controller, flow_control)
     """
-    # 检查是否需要重置控制器
+    # Kiểm tra có cần đặt lại bộ điều khiển
     need_reset = False
 
     if not hasattr(conn, "audio_rate_controller"):
-        # 控制器不存在，需要创建
+        # Bộ điều khiển chưa tồn tại, cần tạo
         need_reset = True
     else:
         rate_controller = conn.audio_rate_controller
 
-        # 后台发送任务已停止, 则需要重置
+        # Task gửi nền đã dừng thì cần đặt lại
         if (
             not rate_controller.pending_send_task
             or rate_controller.pending_send_task.done()
         ):
             need_reset = True
-        # 当sentence_id 变化，需要重置
+        # Khi sentence_id thay đổi, cần đặt lại
         elif (
             getattr(conn, "audio_flow_control", {}).get("sentence_id")
             != conn.sentence_id
@@ -185,7 +185,7 @@ def _get_or_create_rate_controller(
             need_reset = True
 
     if need_reset:
-        # 创建或获取 rate_controller
+        # Tạo hoặc lấy rate_controller
         if not hasattr(conn, "audio_rate_controller"):
             conn.audio_rate_controller = AudioRateController(
                 frame_duration, send_delay=send_delay_ms
@@ -193,14 +193,14 @@ def _get_or_create_rate_controller(
         else:
             conn.audio_rate_controller.reset()
 
-        # 初始化 flow_control
+        # Khởi tạo flow_control
         conn.audio_flow_control = {
             "packet_count": 0,
             "sequence": 0,
             "sentence_id": conn.sentence_id,
         }
 
-        # 启动后台发送循环
+        # Khởi động vòng lặp gửi nền
         _start_background_sender(
             conn, conn.audio_rate_controller, conn.audio_flow_control
         )
@@ -210,23 +210,23 @@ def _get_or_create_rate_controller(
 
 def _start_background_sender(conn: "ConnectionHandler", rate_controller, flow_control):
     """
-    启动后台发送循环任务
+    Khởi động task vòng lặp gửi nền
 
     Args:
-        conn: 连接对象
-        rate_controller: 速率控制器
-        flow_control: 流控状态
+        conn: Đối tượng kết nối
+        rate_controller: Bộ điều khiển tốc độ
+        flow_control: Trạng thái điều tiết luồng
     """
 
     async def send_callback(packet):
-        # 检查是否应该中止
+        # Kiểm tra có nên huỷ bỏ
         if conn.client_abort:
-            raise asyncio.CancelledError("客户端已中止")
+            raise asyncio.CancelledError("Client đã huỷ")
 
         conn.last_activity_time = time.time() * 1000
         await _do_send_audio(conn, packet, flow_control)
 
-    # 使用 start_sending 启动后台循环
+    # Dùng start_sending để khởi động vòng lặp nền
     rate_controller.start_sending(send_callback)
 
 
@@ -234,14 +234,14 @@ async def _send_audio_with_rate_control(
     conn: "ConnectionHandler", audio_list, rate_controller, flow_control, send_delay_ms
 ):
     """
-    使用 rate_controller 发送音频包
+    Dùng rate_controller gửi gói audio
 
     Args:
-        conn: 连接对象
-        audio_list: 音频包列表
-        rate_controller: 速率控制器
-        flow_control: 流控状态
-        send_delay_ms: 自定义发送间隔（毫秒）。
+        conn: Đối tượng kết nối
+        audio_list: Danh sách gói audio
+        rate_controller: Bộ điều khiển tốc độ
+        flow_control: Trạng thái điều tiết luồng
+        send_delay_ms: Khoảng cách gửi tuỳ chỉnh (mili giây).
     """
     for packet in audio_list:
         if conn.client_abort:
@@ -250,10 +250,10 @@ async def _send_audio_with_rate_control(
         conn.last_activity_time = time.time() * 1000
 
         if send_delay_ms > 0:
-            # 自定义节奏模式：所有包入队按 send_delay 发（关闭预缓冲）
+            # Chế độ nhịp tuỳ chỉnh: mọi gói vào hàng đợi gửi theo send_delay (tắt đệm trước)
             rate_controller.add_audio(packet)
         else:
-            # 默认节奏模式（60ms/包）：前 N 包预缓冲直接发，后续入队由后台任务按 interval_ms 节奏发
+            # Chế độ nhịp mặc định (60ms/gói): N gói đầu đệm trước gửi trực tiếp, các gói sau vào hàng đợi do task nền gửi theo nhịp interval_ms
             if flow_control["packet_count"] < PRE_BUFFER_COUNT:
                 await _do_send_audio(conn, packet, flow_control)
             else:
@@ -262,38 +262,38 @@ async def _send_audio_with_rate_control(
 
 async def _do_send_audio(conn: "ConnectionHandler", opus_packet, flow_control):
     """
-    执行实际的音频发送
+    Thực hiện gửi audio thực tế
     """
     packet_index = flow_control.get("packet_count", 0)
     sequence = flow_control.get("sequence", 0)
 
     if conn.conn_from_mqtt_gateway:
-        # 计算时间戳（基于播放位置）
+        # Tính timestamp (dựa trên vị trí phát)
         start_time = time.time()
         timestamp = int(start_time * 1000) % (2**32)
         await _send_to_mqtt_gateway(conn, opus_packet, timestamp, sequence)
     else:
-        # 直接发送opus数据包
+        # Gửi trực tiếp gói opus
         await conn.websocket.send(opus_packet)
 
-    # 更新流控状态
+    # Cập nhật trạng thái điều tiết luồng
     flow_control["packet_count"] = packet_index + 1
     flow_control["sequence"] = sequence + 1
 
 
 async def send_tts_message(conn: "ConnectionHandler", state, text=None):
-    """发送 TTS 状态消息"""
+    """Gửi message trạng thái TTS"""
     if text is None and state == "sentence_start":
         return
     message = {"type": "tts", "state": state, "session_id": conn.session_id}
     if text is not None:
         message["text"] = textUtils.check_emoji(text)
 
-    # TTS播放结束
+    # Phát TTS kết thúc
     if state == "stop":
-        # 保存当前的 sentence_id，用于后续判断是否是当前轮次
+        # Lưu sentence_id hiện tại để về sau xác định có phải lượt hiện tại
         current_sentence_id = conn.sentence_id
-        # 播放提示音
+        # Phát âm báo
         tts_notify = conn.config.get("enable_stop_tts_notify", False)
         if tts_notify:
             stop_tts_notify_voice = conn.config.get(
@@ -301,55 +301,55 @@ async def send_tts_message(conn: "ConnectionHandler", state, text=None):
             )
             audios = await audio_to_data(stop_tts_notify_voice, is_opus=True)
             await sendAudio(conn, audios)
-        # 等待所有音频包发送完成
+        # Chờ mọi gói audio gửi xong
         await _wait_for_audio_completion(conn)
 
-        # 检查是否是当前轮次
+        # Kiểm tra có phải lượt hiện tại
         if current_sentence_id != conn.sentence_id:
             return
 
-        # 停止音频发送循环（仅在流控器已初始化时调用）
+        # Dừng vòng lặp gửi audio (chỉ gọi khi bộ điều tiết luồng đã khởi tạo)
         if hasattr(conn, "audio_rate_controller") and conn.audio_rate_controller:
             conn.audio_rate_controller.stop_sending()
         conn.clearSpeakStatus()
 
-    # 发送消息到客户端
+    # Gửi message tới client
     await conn.websocket.send(json.dumps(message))
 
 
 async def send_stt_message(conn: "ConnectionHandler", text):
-    """发送 STT 状态消息"""
+    """Gửi message trạng thái STT"""
     end_prompt_str = conn.config.get("end_prompt", {}).get("prompt")
     if end_prompt_str and end_prompt_str == text:
         await send_tts_message(conn, "start")
         return
 
-    # 解析JSON格式，提取实际的用户说话内容
+    # Phân tích định dạng JSON, trích xuất nội dung nói thực tế của người dùng
     display_text = text
     try:
-        # 尝试解析JSON格式
+        # Thử phân tích định dạng JSON
         if text.strip().startswith("{") and text.strip().endswith("}"):
             parsed_data = json.loads(text)
             if isinstance(parsed_data, dict) and "content" in parsed_data:
-                # 如果是包含说话人信息的JSON格式，只显示content部分
+                # Nếu là định dạng JSON chứa thông tin người nói, chỉ hiển thị phần content
                 display_text = parsed_data["content"]
-                # 保存说话人信息到conn对象
+                # Lưu thông tin người nói vào đối tượng conn
                 if "speaker" in parsed_data:
                     conn.current_speaker = parsed_data["speaker"]
     except (json.JSONDecodeError, TypeError):
-        # 如果不是JSON格式，直接使用原始文本
+        # Nếu không phải định dạng JSON, dùng trực tiếp text gốc
         display_text = text
     stt_text = textUtils.get_string_no_punctuation_or_emoji(display_text)
     await conn.websocket.send(
         json.dumps({"type": "stt", "text": stt_text, "session_id": conn.session_id})
     )
     await send_tts_message(conn, "start")
-    # 发送start消息后客户端状态会处于说话中状态，同步服务端状态
+    # Sau khi gửi message start, client sẽ ở trạng thái đang nói, đồng bộ trạng thái phía server
     conn.client_is_speaking = True
 
 
 async def send_display_message(conn: "ConnectionHandler", text):
-    """发送纯显示消息"""
+    """Gửi message chỉ hiển thị"""
     message = {
         "type": "stt",
         "text": text,

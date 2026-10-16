@@ -2,7 +2,7 @@ import os
 import importlib.util
 import asyncio
 
-print("使用前请根据doc/performance_testerer.md的说明准备配置。")
+print("Trước khi dùng, vui lòng chuẩn bị cấu hình theo hướng dẫn trong doc/performance_testerer.md.")
 
 
 def list_performance_tester_modules():
@@ -31,7 +31,7 @@ async def load_and_execute_module(module_name):
         else:
             main_func()
     else:
-        print(f"模块 {module_name} 中没有找到 main 函数。")
+        print(f"Không tìm thấy hàm main trong module {module_name}.")
 
 
 def get_module_description(module_name):
@@ -41,28 +41,28 @@ def get_module_description(module_name):
     spec = importlib.util.spec_from_file_location(module_name, module_path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
-    return getattr(module, "description", "暂无描述")
+    return getattr(module, "description", "Không có mô tả")
 
 
 def main():
     modules = list_performance_tester_modules()
     if not modules:
-        print("performance_tester 目录中没有可用的性能测试工具。")
+        print("Trong thư mục performance_tester không có công cụ test hiệu năng nào.")
         return
 
-    print("可用的性能测试工具：")
+    print("Các công cụ test hiệu năng khả dụng:")
     for idx, module in enumerate(modules, 1):
         description = get_module_description(module)
         print(f"{idx}. {module} - {description}")
 
     try:
-        choice = int(input("请选择要调用的性能测试工具编号：")) - 1
+        choice = int(input("Vui lòng chọn số thứ tự công cụ test hiệu năng muốn gọi:")) - 1
         if 0 <= choice < len(modules):
             asyncio.run(load_and_execute_module(modules[choice]))
         else:
-            print("无效的选择。")
+            print("Lựa chọn không hợp lệ.")
     except ValueError:
-        print("请输入有效的数字。")
+        print("Vui lòng nhập số hợp lệ.")
 
 
 if __name__ == "__main__":

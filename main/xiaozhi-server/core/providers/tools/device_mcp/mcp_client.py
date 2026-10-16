@@ -1,4 +1,4 @@
-"""设备端MCP客户端定义"""
+"""Định nghĩa MCP client phía thiết bị"""
 
 import asyncio
 from concurrent.futures import Future
@@ -10,7 +10,7 @@ logger = setup_logging()
 
 
 class MCPClient:
-    """设备端MCP客户端，用于管理MCP状态和工具"""
+    """MCP client phía thiết bị, dùng để quản lý trạng thái và công cụ MCP"""
 
     def __init__(self):
         self.tools = {}  # sanitized_name -> tool_data

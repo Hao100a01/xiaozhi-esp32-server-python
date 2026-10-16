@@ -1,4 +1,4 @@
-"""服务端插件工具执行器"""
+"""Bộ thực thi công cụ plugin phía máy chủ"""
 
 import asyncio
 from typing import Dict, Any, TYPE_CHECKING
@@ -10,7 +10,7 @@ from plugins_func.register import all_function_registry, module_func_map, Action
 
 
 class ServerPluginExecutor(ToolExecutor):
-    """服务端插件工具执行器"""
+    """Bộ thực thi công cụ plugin phía máy chủ"""
 
     def __init__(self, conn: "ConnectionHandler"):
         self.conn = conn
@@ -19,18 +19,18 @@ class ServerPluginExecutor(ToolExecutor):
     async def execute(
         self, conn: "ConnectionHandler", tool_name: str, arguments: Dict[str, Any]
     ) -> ActionResponse:
-        """执行服务端插件工具"""
+        """Thực thi công cụ plugin phía máy chủ"""
         func_item = all_function_registry.get(tool_name)
         if not func_item:
             return ActionResponse(
-                action=Action.NOTFOUND, response=f"插件函数 {tool_name} 不存在"
+                action=Action.NOTFOUND, response=f"Hàm plugin {tool_name} không tồn tại"
             )
 
         try:
-            # 根据工具类型决定如何调用
+            # Quyết định cách gọi theo kiểu công cụ
             if hasattr(func_item, "type"):
                 func_type = func_item.type
-                if func_type.code in [4, 5]:  # SYSTEM_CTL, IOT_CTL (需要conn参数)
+                if func_type.code in [4, 5]:  # SYSTEM_CTL, IOT_CTL (cần tham số conn)
                     result = func_item.func(conn, **arguments)
                 elif func_type.code == 2:  # WAIT
                     result = func_item.func(**arguments)
@@ -39,10 +39,10 @@ class ServerPluginExecutor(ToolExecutor):
                 else:
                     result = func_item.func(**arguments)
             else:
-                # 默认不传conn参数
+                # Mặc định không truyền tham số conn
                 result = func_item.func(**arguments)
 
-            # 兼容 async def 工具函数
+            # Tương thích hàm công cụ async def
             if asyncio.iscoroutine(result):
                 result = await result
 
@@ -55,10 +55,10 @@ class ServerPluginExecutor(ToolExecutor):
             )
 
     def _expand_plugin_names(self, config_functions):
-        """将模块级别的插件名展开为具体函数名。
+        """Mở rộng tên plugin cấp module thành tên hàm cụ thể.
 
-        在一个 function 文件中可能注册多个 @register_function，
-        配置中如果使用的是模块名（文件名），需要展开为具体的函数名列表。
+        Trong một tệp function có thể đăng ký nhiều @register_function,
+        Nếu trong cấu hình dùng tên module (tên tệp), cần mở rộng thành danh sách tên hàm cụ thể.
         """
         if not isinstance(config_functions, list):
             try:
@@ -69,50 +69,50 @@ class ServerPluginExecutor(ToolExecutor):
         expanded = []
         for name in config_functions:
             if name in module_func_map:
-                # 模块名，展开为该模块下所有注册函数名
+                # Tên module, mở rộng thành mọi tên hàm đã đăng ký dưới module đó
                 expanded.extend(module_func_map[name])
             elif name in all_function_registry:
-                # 精确匹配函数名，直接保留
+                # Khớp chính xác tên hàm, giữ lại trực tiếp
                 expanded.append(name)
             else:
-                # 未知名称，保留原值（可能是 MCP 或其他工具）
+                # Tên không rõ, giữ nguyên giá trị (có thể là MCP hoặc công cụ khác)
                 expanded.append(name)
         return expanded
 
     def _get_plugin_description(self, func_name):
-        """获取插件函数的描述，优先精确匹配函数名，其次匹配模块名。"""
+        """Lấy mô tả hàm plugin, ưu tiên khớp chính xác tên hàm, sau đó khớp tên module."""
         plugins = self.config.get("plugins", {})
-        # 精确匹配函数名
+        # Khớp chính xác tên hàm
         if func_name in plugins:
             return plugins[func_name].get("description", "")
-        # 通过 module_func_map 反向查找模块名
+        # Tra ngược tên module qua module_func_map
         for module_name, func_names in module_func_map.items():
             if func_name in func_names and module_name in plugins:
                 return plugins[module_name].get("description", "")
         return ""
 
     def get_tools(self) -> Dict[str, ToolDefinition]:
-        """获取所有注册的服务端插件工具"""
+        """Lấy mọi công cụ plugin phía máy chủ đã đăng ký"""
         tools = {}
 
-        # 获取必要的函数
+        # Lấy các hàm cần thiết
         necessary_functions = ["handle_exit_intent", "get_lunar"]
 
-        # 获取配置中的函数
+        # Lấy hàm trong cấu hình
         config_functions = self.config["Intent"][
             self.config["selected_module"]["Intent"]
         ].get("functions", [])
 
-        # 将模块级别的插件名展开为具体函数名（兜底机制）
+        # Mở rộng tên plugin cấp module thành tên hàm cụ thể (cơ chế dự phòng)
         config_functions = self._expand_plugin_names(config_functions)
 
-        # 合并所有需要的函数
+        # Gộp mọi hàm cần thiết
         all_required_functions = list(set(necessary_functions + config_functions))
 
         for func_name in all_required_functions:
             func_item = all_function_registry.get(func_name)
             if func_item:
-                # 从函数注册中获取描述（支持模块名和函数名的双层查找）
+                # Lấy mô tả từ đăng ký hàm (hỗ trợ tra hai lớp tên module và tên hàm)
                 fun_description = self._get_plugin_description(func_name)
                 if fun_description is not None and len(fun_description) > 0:
                     if "function" in func_item.description and isinstance(
@@ -122,7 +122,7 @@ class ServerPluginExecutor(ToolExecutor):
                             "description"
                         ] = fun_description
 
-                # 新闻插件：根据配置更新新闻源参数描述
+                # Plugin tin tức: cập nhật mô tả tham số nguồn tin theo cấu hình
                 if func_name == "get_news_from_newsnow":
                     self._init_news_source_description(func_item, func_name)
 
@@ -135,11 +135,11 @@ class ServerPluginExecutor(ToolExecutor):
         return tools
 
     def has_tool(self, tool_name: str) -> bool:
-        """检查是否有指定的服务端插件工具"""
+        """Kiểm tra có công cụ plugin phía máy chủ được chỉ định không"""
         return tool_name in all_function_registry
 
     def _init_news_source_description(self, func_item, func_name):
-        """根据连接配置初始化新闻工具的参数描述"""
+        """Khởi tạo mô tả tham số của công cụ tin tức theo cấu hình kết nối"""
         news_sources = (
             self.config.get("plugins", {})
             .get(func_name, {})
@@ -151,6 +151,6 @@ class ServerPluginExecutor(ToolExecutor):
         try:
             func_item.description["function"]["parameters"]["properties"]["source"][
                 "description"
-            ] = f"新闻源的标准中文名称，例如{sources_str}等。可选参数，如果不提供则使用默认新闻源"
+            ] = f"Tên tiếng Trung chuẩn của nguồn tin tức, ví dụ {sources_str}, v.v. Tham số tuỳ chọn, nếu không cung cấp thì dùng nguồn tin tức mặc định"
         except (KeyError, TypeError):
             pass

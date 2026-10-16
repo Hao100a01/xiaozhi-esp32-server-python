@@ -5,18 +5,18 @@ import time
 
 
 class AuthenticationError(Exception):
-    """认证异常"""
+    """Ngoại lệ xác thực"""
 
     pass
 
 
 class AuthManager:
     """
-    统一授权认证管理器
-    生成与验证 client_id device_id token（HMAC-SHA256）认证三元组
-    token 中不含明文 client_id/device_id，只携带签名 + 时间戳; client_id/device_id在连接时传递
-    在 MQTT 中 client_id: client_id, username: device_id, password: token
-    在 Websocket 中，header:{Device-ID: device_id, Client-ID: client_id, Authorization: Bearer token, ......}
+    Bộ quản lý xác thực ủy quyền thống nhất
+    Sinh và xác thực bộ ba xác thực client_id device_id token (HMAC-SHA256)
+    token không chứa client_id/device_id dạng plaintext, chỉ mang chữ ký + timestamp; client_id/device_id được truyền khi kết nối
+    Trong MQTT, client_id: client_id, username: device_id, password: token
+    Trong Websocket, header:{Device-ID: device_id, Client-ID: client_id, Authorization: Bearer token, ......}
     """
 
     def __init__(self, secret_key: str, expire_seconds: int = 60 * 60 * 24 * 30):
@@ -27,7 +27,7 @@ class AuthManager:
         self.secret_key = secret_key
 
     def _sign(self, content: str) -> str:
-        """HMAC-SHA256签名并Base64编码"""
+        """Ký HMAC-SHA256 và mã hoá Base64"""
         sig = hmac.new(
             self.secret_key.encode("utf-8"), content.encode("utf-8"), hashlib.sha256
         ).digest()
@@ -35,33 +35,33 @@ class AuthManager:
 
     def generate_token(self, client_id: str, username: str) -> str:
         """
-        生成 token
+        Sinh token
         Args:
-            client_id: 设备连接ID
-            username: 设备用户名（通常为deviceId）
+            client_id: ID kết nối của thiết bị
+            username: Tên người dùng của thiết bị (thường là deviceId)
         Returns:
-            str: token字符串
+            str: Chuỗi token
         """
         ts = int(time.time())
         content = f"{client_id}|{username}|{ts}"
         signature = self._sign(content)
-        # token仅包含签名与时间戳，不包含明文信息
+        # token chỉ chứa chữ ký và timestamp, không chứa thông tin plaintext
         token = f"{signature}.{ts}"
         return token
 
     def verify_token(self, token: str, client_id: str, username: str) -> bool:
         """
-        验证token有效性
+        Xác thực tính hợp lệ của token
         Args:
-            token: 客户端传入的token
-            client_id: 连接使用的client_id
-            username: 连接使用的username
+            token: Token do client truyền vào
+            client_id: client_id dùng cho kết nối
+            username: username dùng cho kết nối
         """
         try:
             sig_part, ts_str = token.split(".")
             ts = int(ts_str)
             if int(time.time()) - ts > self.expire_seconds:
-                return False  # 过期
+                return False  # Hết hạn
 
             expected_sig = self._sign(f"{client_id}|{username}|{ts}")
             if not hmac.compare_digest(sig_part, expected_sig):

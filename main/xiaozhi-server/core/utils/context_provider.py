@@ -5,7 +5,7 @@ from config.logger import setup_logging
 TAG = __name__
 
 class ContextDataProvider:
-    """数据上下文填充，负责从配置的API获取数据"""
+    """Điền ngữ cảnh dữ liệu, chịu trách nhiệm lấy dữ liệu từ API đã cấu hình"""
     
     def __init__(self, config: Dict[str, Any], logger=None):
         self.config = config
@@ -13,7 +13,7 @@ class ContextDataProvider:
         self.context_data = ""
 
     def fetch_all(self, device_id: str) -> str:
-        """获取所有配置的上下文数据"""
+        """Lấy toàn bộ dữ liệu ngữ cảnh đã cấu hình"""
         context_providers = self.config.get("context_providers", [])
         if not context_providers:
             return ""
@@ -28,10 +28,10 @@ class ContextDataProvider:
 
             try:
                 headers = headers.copy() if isinstance(headers, dict) else {}
-                # 将 device_id 添加到请求头
+                # Thêm device_id vào header của request
                 headers["device-id"] = device_id
                 
-                # 发送请求
+                # Gửi request
                 response = httpx.get(url, headers=headers, timeout=3)
                 
                 if response.status_code == 200:
@@ -39,7 +39,7 @@ class ContextDataProvider:
                     if isinstance(result, dict):
                         if result.get("code") == 0:
                             data = result.get("data")
-                            # 格式化数据
+                            # Định dạng dữ liệu
                             if isinstance(data, dict):
                                 for k, v in data.items():
                                     formatted_lines.append(f"- **{k}：** {v}")
@@ -49,16 +49,16 @@ class ContextDataProvider:
                             else:
                                 formatted_lines.append(f"- {data}")
                         else:
-                            self.logger.bind(tag=TAG).warning(f"API {url} 返回错误码: {result.get('msg')}")
+                            self.logger.bind(tag=TAG).warning(f"API {url} trả về mã lỗi: {result.get('msg')}")
                     else:
-                        self.logger.bind(tag=TAG).warning(f"API {url} 返回的不是JSON字典")
+                        self.logger.bind(tag=TAG).warning(f"API {url} trả về không phải dict JSON")
                 else:
-                    self.logger.bind(tag=TAG).warning(f"API {url} 请求失败: {response.status_code}")
+                    self.logger.bind(tag=TAG).warning(f"API {url} request thất bại: {response.status_code}")
             except Exception as e:
-                self.logger.bind(tag=TAG).error(f"获取上下文数据 {url} 失败: {e}")
+                self.logger.bind(tag=TAG).error(f"Lấy dữ liệu ngữ cảnh {url} thất bại: {e}")
         
-        # 将所有格式化后的行拼接成一个字符串
+        # Nối tất cả các dòng đã định dạng thành một chuỗi
         self.context_data = "\n".join(formatted_lines)
         if self.context_data:
-            self.logger.bind(tag=TAG).debug(f"已注入动态上下文数据:\n{self.context_data}")
+            self.logger.bind(tag=TAG).debug(f"Đã inject dữ liệu ngữ cảnh động:\n{self.context_data}")
         return self.context_data

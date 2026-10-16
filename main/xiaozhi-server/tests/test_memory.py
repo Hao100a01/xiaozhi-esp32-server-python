@@ -1,14 +1,14 @@
-"""Memory 链路测试。
+"""Test chuỗi Memory.
 
-Mock 模式（默认）：从 data/.config.yaml 拿配置构造真实 provider；外部
-SDK 调用（mem0ai / powermem 客户端）走 shim，不会真发请求。
-Live 模式（``RUN_LIVE_API_TESTS=1``）：调真实 Memory provider。
+Chế độ Mock (mặc định): lấy cấu hình từ data/.config.yaml để khởi tạo provider thật;
+các cuộc gọi SDK bên ngoài (client mem0ai / powermem) đi qua shim, không gửi request thật.
+Chế độ Live (``RUN_LIVE_API_TESTS=1``): gọi Memory provider thật.
 
-接口约定（core/providers/memory/base.py）：
+Quy ước interface (core/providers/memory/base.py):
     async save_memory(msgs, session_id=None) -> str
     async query_memory(query: str) -> str
 
-默认 selected_module.Memory = nomem（不开启记忆，本地即可）。
+Mặc định selected_module.Memory = nomem (không bật memory, chạy local là đủ).
 """
 from __future__ import annotations
 
@@ -30,41 +30,41 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 def _build_provider():
     name = get_selected_provider_name("Memory")
     if not name:
-        pytest.skip("selected_module.Memory 未设置")
+        pytest.skip("selected_module.Memory chưa được đặt")
     cfg = get_provider_config("Memory", name)
     if not cfg:
-        pytest.skip(f"Memory provider '{name}' 配置缺失")
+        pytest.skip(f"Memory provider '{name}' thiếu cấu hình")
     ptype = get_provider_type("Memory", name)
     if not ptype:
-        pytest.skip(f"Memory '{name}' 的 type 字段缺失")
+        pytest.skip(f"Memory '{name}' thiếu trường type")
     from core.utils.memory import create_instance
 
     return create_instance(ptype, cfg, None)
 
 
 def test_memory_provider_constructs_from_config() -> None:
-    """从 config 应该能实例化出 MemoryProviderBase 子类。"""
+    """Từ config phải khởi tạo được một subclass của MemoryProviderBase."""
     provider = _build_provider()
     from core.providers.memory.base import MemoryProviderBase
 
     assert isinstance(provider, MemoryProviderBase), (
-        f"Memory provider 类型错：{type(provider).__name__}"
+        f"Memory provider sai kiểu: {type(provider).__name__}"
     )
 
 
 def test_memory_provider_exposes_save_and_query() -> None:
-    """provider 必须实现 save_memory / query_memory。"""
+    """Provider phải implement save_memory / query_memory."""
     provider = _build_provider()
     assert hasattr(provider, "save_memory"), (
-        f"{type(provider).__name__} 缺少 save_memory 方法"
+        f"{type(provider).__name__} thiếu phương thức save_memory"
     )
     assert hasattr(provider, "query_memory"), (
-        f"{type(provider).__name__} 缺少 query_memory 方法"
+        f"{type(provider).__name__} thiếu phương thức query_memory"
     )
 
 
 def test_memory_save_and_query_roundtrip() -> None:
-    """save 后 query 应该不抛异常；nomem 返回 None/空串都算通过。"""
+    """Sau save thì query không được ném exception; nomem trả về None/chuỗi rỗng cũng tính là pass."""
     provider = _build_provider()
     msgs = [{"role": "user", "content": "test message"}]
 
@@ -74,8 +74,9 @@ def test_memory_save_and_query_roundtrip() -> None:
         return mid, result
 
     mid, result = asyncio.run(run())
-    # nomem 等"不开记忆"实现可能返回 None；真实记忆服务应返回 str ID
+    # Các implementation kiểu nomem "không bật memory" có thể trả về None;
+    # dịch vụ memory thật phải trả về ID dạng str
     assert mid is None or isinstance(mid, str), (
-        f"save_memory 应返回 str 或 None，得到 {type(mid).__name__}"
+        f"save_memory phải trả về str hoặc None, được {type(mid).__name__}"
     )
-    assert isinstance(result, str), "query_memory 应返回 str"
+    assert isinstance(result, str), "query_memory phải trả về str"

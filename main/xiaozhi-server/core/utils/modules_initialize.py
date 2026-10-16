@@ -17,23 +17,23 @@ def initialize_modules(
     init_intent=False,
 ) -> Dict[str, Any]:
     """
-    初始化所有模块组件
+    Khởi tạo mọi module thành phần
 
     Args:
-        config: 配置字典
+        config: Dict cấu hình
 
     Returns:
-        Dict[str, Any]: 包含所有初始化后的模块的字典
+        Dict[str, Any]: Dict chứa mọi module đã khởi tạo
     """
     modules = {}
 
-    # 初始化TTS模块
+    # Khởi tạo module TTS
     if init_tts:
         select_tts_module = config["selected_module"]["TTS"]
         modules["tts"] = initialize_tts(config)
-        logger.bind(tag=TAG).info(f"初始化组件: tts成功 {select_tts_module}")
+        logger.bind(tag=TAG).info(f"Khởi tạo thành phần: tts thành công {select_tts_module}")
 
-    # 初始化LLM模块
+    # Khởi tạo module LLM
     if init_llm:
         select_llm_module = config["selected_module"]["LLM"]
         llm_type = (
@@ -45,9 +45,9 @@ def initialize_modules(
             llm_type,
             config["LLM"][select_llm_module],
         )
-        logger.bind(tag=TAG).info(f"初始化组件: llm成功 {select_llm_module}")
+        logger.bind(tag=TAG).info(f"Khởi tạo thành phần: llm thành công {select_llm_module}")
 
-    # 初始化Intent模块
+    # Khởi tạo module Intent
     if init_intent:
         select_intent_module = config["selected_module"]["Intent"]
         intent_type = (
@@ -59,9 +59,9 @@ def initialize_modules(
             intent_type,
             config["Intent"][select_intent_module],
         )
-        logger.bind(tag=TAG).info(f"初始化组件: intent成功 {select_intent_module}")
+        logger.bind(tag=TAG).info(f"Khởi tạo thành phần: intent thành công {select_intent_module}")
 
-    # 初始化Memory模块
+    # Khởi tạo module Memory
     if init_memory:
         select_memory_module = config["selected_module"]["Memory"]
         memory_type = (
@@ -74,9 +74,9 @@ def initialize_modules(
             config["Memory"][select_memory_module],
             config.get("summaryMemory", None),
         )
-        logger.bind(tag=TAG).info(f"初始化组件: memory成功 {select_memory_module}")
+        logger.bind(tag=TAG).info(f"Khởi tạo thành phần: memory thành công {select_memory_module}")
 
-    # 初始化VAD模块
+    # Khởi tạo module VAD
     if init_vad:
         select_vad_module = config["selected_module"]["VAD"]
         vad_type = (
@@ -88,13 +88,13 @@ def initialize_modules(
             vad_type,
             config["VAD"][select_vad_module],
         )
-        logger.bind(tag=TAG).info(f"初始化组件: vad成功 {select_vad_module}")
+        logger.bind(tag=TAG).info(f"Khởi tạo thành phần: vad thành công {select_vad_module}")
 
-    # 初始化ASR模块
+    # Khởi tạo module ASR
     if init_asr:
         select_asr_module = config["selected_module"]["ASR"]
         modules["asr"] = initialize_asr(config)
-        logger.bind(tag=TAG).info(f"初始化组件: asr成功 {select_asr_module}")
+        logger.bind(tag=TAG).info(f"Khởi tạo thành phần: asr thành công {select_asr_module}")
     return modules
 
 
@@ -127,26 +127,26 @@ def initialize_asr(config):
         config["ASR"][select_asr_module],
         str(config.get("delete_audio", True)).lower() in ("true", "1", "yes"),
     )
-    logger.bind(tag=TAG).info("ASR模块初始化完成")
+    logger.bind(tag=TAG).info("Khởi tạo module ASR hoàn tất")
     return new_asr
 
 
 def initialize_voiceprint(asr_instance, config):
-    """初始化声纹识别功能"""
+    """Khởi tạo chức năng nhận diện voiceprint"""
     voiceprint_config = config.get("voiceprint")
     if not voiceprint_config:
         return False  
 
-    # 应用配置
+    # Áp dụng cấu hình
     if not voiceprint_config.get("url") or not voiceprint_config.get("speakers"):
-        logger.bind(tag=TAG).warning("声纹识别配置不完整")
+        logger.bind(tag=TAG).warning("Cấu hình nhận diện voiceprint chưa đầy đủ")
         return False
         
     try:
         asr_instance.init_voiceprint(voiceprint_config)
-        logger.bind(tag=TAG).info("ASR模块声纹识别功能已动态启用")
-        logger.bind(tag=TAG).info(f"配置说话人数量: {len(voiceprint_config['speakers'])}")
+        logger.bind(tag=TAG).info("Chức năng nhận diện voiceprint của module ASR đã được bật động")
+        logger.bind(tag=TAG).info(f"Số lượng người nói đã cấu hình: {len(voiceprint_config['speakers'])}")
         return True
     except Exception as e:
-        logger.bind(tag=TAG).error(f"动态初始化声纹识别功能失败: {str(e)}")
+        logger.bind(tag=TAG).error(f"Khởi tạo động chức năng nhận diện voiceprint thất bại: {str(e)}")
         return False

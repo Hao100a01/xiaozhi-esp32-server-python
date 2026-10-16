@@ -37,9 +37,9 @@ def parse_response(res):
     protocol_version(4 bits), header_size(4 bits),
     message_type(4 bits), message_type_specific_flags(4 bits)
     serialization_method(4 bits) message_compression(4 bits)
-    reserved （8bits) 保留字段
-    header_extensions 扩展头(大小等于 8 * 4 * (header_size - 1) )
-    payload 类似与http 请求体
+    reserved (8bits) trường bảo lưu
+    header_extensions header mở rộng (kích thước bằng 8 * 4 * (header_size - 1))
+    payload tương tự body của HTTP request
     """
     protocol_version = res[0] >> 4
     header_size = res[0] & 0x0F
@@ -97,7 +97,7 @@ class ASRProvider(ASRProviderBase):
         self.success_code = 1000
         self.seg_duration = 15000
 
-        # 确保输出目录存在
+        # Đảm bảo thư mục đầu ra tồn tại
         os.makedirs(self.output_dir, exist_ok=True)
 
     @staticmethod
@@ -168,7 +168,7 @@ class ASRProvider(ASRProviderBase):
                 if (
                     "payload_msg" in result
                     and result["payload_msg"]["code"] != self.success_code
-                    and result["payload_msg"]["code"] != 1013  # 忽略无有效语音的错误
+                    and result["payload_msg"]["code"] != 1013  # Bỏ qua lỗi không có giọng nói hợp lệ
                 ):
                     logger.bind(tag=TAG).error(f"ASR error: {result}")
                     return None
@@ -205,7 +205,7 @@ class ASRProvider(ASRProviderBase):
                         return result["payload_msg"]["result"][0]["text"]
                     return None
                 elif "payload_msg" in result and result["payload_msg"]["code"] == 1013:
-                    # 无有效语音，返回空字符串
+                    # Không có giọng nói hợp lệ, trả về chuỗi rỗng
                     return ""
                 else:
                     logger.bind(tag=TAG).error(f"ASR error: {result}")
@@ -234,27 +234,27 @@ class ASRProvider(ASRProviderBase):
     async def speech_to_text(
         self, opus_data: List[bytes], session_id: str, artifacts=None
     ) -> Tuple[Optional[str], Optional[str]]:
-        """将语音数据转换为文本"""
+        """Chuyển dữ liệu giọng nói thành văn bản"""
 
         try:
             if artifacts is None:
                 return "", None
 
-            # 直接使用PCM数据
-            # 计算分段大小 (单声道, 16bit, 16kHz采样率)
+            # Dùng trực tiếp dữ liệu PCM
+            # Tính kích thước đoạn (đơn kênh, 16bit, tần số lấy mẫu 16kHz)
             size_per_sec = 1 * 2 * 16000  # nchannels * sampwidth * framerate
             segment_size = int(size_per_sec * self.seg_duration / 1000)
 
-            # 语音识别
+            # Nhận dạng giọng nói
             start_time = time.time()
             text = await self._send_request(artifacts.pcm_bytes, segment_size)
             if text:
                 logger.bind(tag=TAG).debug(
-                    f"语音识别耗时: {time.time() - start_time:.3f}s | 结果: {text}"
+                    f"Nhận dạng giọng nói mất: {time.time() - start_time:.3f}s | Kết quả: {text}"
                 )
                 return text, artifacts.file_path
             return "", artifacts.file_path
 
         except Exception as e:
-            logger.bind(tag=TAG).error(f"语音识别失败: {e}", exc_info=True)
+            logger.bind(tag=TAG).error(f"Nhận dạng giọng nói thất bại: {e}", exc_info=True)
             return "", None

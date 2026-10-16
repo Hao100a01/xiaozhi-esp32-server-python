@@ -1,5 +1,5 @@
 """
-缓存策略和数据结构定义
+Định nghĩa chiến lược cache và cấu trúc dữ liệu
 """
 
 import time
@@ -9,21 +9,21 @@ from dataclasses import dataclass
 
 
 class CacheStrategy(Enum):
-    """缓存策略枚举"""
+    """Enum chiến lược cache"""
 
-    TTL = "ttl"  # 基于时间过期
-    LRU = "lru"  # 最近最少使用
-    FIXED_SIZE = "fixed_size"  # 固定大小
-    TTL_LRU = "ttl_lru"  # TTL + LRU混合策略
+    TTL = "ttl"  # Hết hạn dựa trên thời gian
+    LRU = "lru"  # Ít dùng gần đây nhất
+    FIXED_SIZE = "fixed_size"  # Kích thước cố định
+    TTL_LRU = "ttl_lru"  # Chiến lược hỗn hợp TTL + LRU
 
 
 @dataclass
 class CacheEntry:
-    """缓存条目数据结构"""
+    """Cấu trúc dữ liệu mục cache"""
 
     value: Any
     timestamp: float
-    ttl: Optional[float] = None  # 生存时间（秒）
+    ttl: Optional[float] = None  # Thời gian sống (giây)
     access_count: int = 0
     last_access: float = None
 
@@ -32,12 +32,12 @@ class CacheEntry:
             self.last_access = self.timestamp
 
     def is_expired(self) -> bool:
-        """检查是否过期"""
+        """Kiểm tra đã hết hạn chưa"""
         if self.ttl is None:
             return False
         return time.time() - self.timestamp > self.ttl
 
     def touch(self):
-        """更新访问时间和计数"""
+        """Cập nhật thời gian truy cập và bộ đếm"""
         self.last_access = time.time()
         self.access_count += 1

@@ -1,8 +1,9 @@
-"""ManageApiClient 生命周期回归测试：直接以 unittest 运行，不依赖应用/模型与网络。
+"""Test hồi quy vòng đời ManageApiClient: chạy trực tiếp bằng unittest, không phụ thuộc app/model hay network.
 
-不进 pytest 套件：tests/conftest.py 的 mock 层（import 时全局替换
-asyncio.sleep 与 httpx.AsyncClient）与本文件的时序断言、MockTransport
-注入互相破坏；__test__ = False 使 pytest 跳过收集，请直接用 unittest 运行。
+Không đưa vào bộ pytest: lớp mock của tests/conftest.py (khi import đã thay thế
+toàn cục asyncio.sleep và httpx.AsyncClient) xung đột với các assertion thời gian và
+việc inject MockTransport của file này; __test__ = False khiến pytest bỏ qua thu thập,
+hãy chạy trực tiếp bằng unittest.
 Usage: python -B tests/test_manage_api_client_lifecycle.py -v
 """
 __test__ = False
@@ -64,13 +65,13 @@ class ManageApiClientLifecycleTest(unittest.IsolatedAsyncioTestCase):
                              json={'value': 123}), {'ok': True})
 
     async def test_retry_reuses_client_until_request_ends(self):
-        """重试在同一个 client（池内同一 keep-alive 连接）上进行，
-        整个业务请求结束后才关闭——client 生命周期与业务请求对齐，
-        而不是与单次尝试对齐。"""
+        """Việc retry diễn ra trên cùng một client (cùng kết nối keep-alive trong pool),
+        chỉ đóng sau khi toàn bộ business request kết thúc — vòng đời client căn theo
+        business request, không căn theo từng lần thử."""
         async def handle(request):
             if len(self.requests) == 1:
                 return httpx.Response(503)
-            # 第二次尝试时第一个 client 仍在服务（未被提前关闭）
+            # Ở lần thử thứ hai, client đầu tiên vẫn đang phục vụ (chưa bị đóng sớm)
             self.assertFalse(self.clients[0].is_closed)
             return httpx.Response(200, json={'code': 0, 'data': True})
         with self.transport(handle):
@@ -87,7 +88,7 @@ class ManageApiClientLifecycleTest(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(self.clients[0].is_closed)
 
     async def test_remote_protocol_error_without_response_triggers_retry(self):
-        """stale keep-alive 场景：响应从未开始，重试安全。"""
+        """Kịch bản stale keep-alive: response chưa từng bắt đầu, retry an toàn."""
         async def handle(request):
             if len(self.requests) == 1:
                 raise httpx.RemoteProtocolError(
@@ -99,8 +100,8 @@ class ManageApiClientLifecycleTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(len(self.requests), 2)
 
     async def test_remote_protocol_error_incomplete_body_not_retried(self):
-        """响应中途截断：服务端很可能已处理完请求，重试非幂等 POST
-        会重复提交，必须直接失败。"""
+        """Response bị cắt giữa chừng: server rất có thể đã xử lý xong request,
+        retry một POST không idempotent sẽ gửi trùng, phải fail ngay."""
         async def handle(request):
             raise httpx.RemoteProtocolError(
                 'Peer closed connection without sending complete message body '
@@ -157,27 +158,29 @@ class ManageApiClientLifecycleTest(unittest.IsolatedAsyncioTestCase):
         with self.transport(handle):
             self.assertTrue(await self.api.report('device', 'session', 1, 'text', None, 0))
             self.assertIsNone(await self.api.report('device', 'session', 1, 'later', None, 0))
+            # '已关闭' giữ nguyên: pattern này khớp với message lỗi thật trong source code.
             with self.assertRaisesRegex(Exception, '已关闭'):
                 await self.cls._execute_async_request('POST', '/report')
         self.assertEqual(len(self.clients), 1)
 
     async def test_safe_close_interrupts_retry_backoff(self):
-        """safe_close 打断重试等待：已开始的尝试跑完，不发起新尝试，
-        以 ManageApiShutdownError 收尾（与重试耗尽的网络异常可区分）。"""
+        """safe_close ngắt quãng chờ retry: các lần thử đã bắt đầu chạy xong, không phát sinh
+        lần thử mới, kết thúc bằng ManageApiShutdownError (phân biệt được với network exception
+        khi retry cạn)."""
         async def handle(request):
             return httpx.Response(503)
         original_delay = self.cls.retry_delay
-        self.cls.retry_delay = 5.0  # setUp 默认 0，观察不到打断
+        self.cls.retry_delay = 5.0  # setUp mặc định 0, không quan sát được sự ngắt
         try:
             with self.transport(handle):
                 task = asyncio.create_task(
                     self.cls._execute_async_request('POST', '/report'))
-                await asyncio.sleep(0.2)  # 进入重试等待
+                await asyncio.sleep(0.2)  # bước vào trạng thái chờ retry
                 self.cls.safe_close()
                 with self.assertRaises(self.api.ManageApiShutdownError) as ctx:
                     await task
                 self.assertIsInstance(ctx.exception.__cause__, httpx.HTTPStatusError)
-            # 只有第一次尝试：重试等待被打断，未发起新尝试
+            # Chỉ có lần thử đầu tiên: quá trình chờ retry bị ngắt, không phát sinh lần thử mới
             self.assertEqual(len(self.clients), 1)
             self.assertEqual(len(self.requests), 1)
         finally:
@@ -193,8 +196,9 @@ class ManageApiClientLifecycleTest(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(all(results))
         self.assertEqual(len(self.clients), 100)
         self.assertTrue(all(c.is_closed for c in self.clients))
-        # 缓存回归网：释放测试持有的强引用后 client 必须可被 GC 回收，
-        # 任何类级缓存（id(loop) dict / WeakKeyDictionary）重引入都会让存活数 > 0
+        # Lưới hồi quy cache: sau khi giải phóng các strong reference mà test giữ,
+        # client phải được GC thu hồi; bất kỳ cache cấp class nào
+        # (dict theo id(loop) / WeakKeyDictionary) bị đưa lại vào cũng khiến số lượng còn sống > 0
         refs = [weakref.ref(c) for c in self.clients]
         self.clients.clear()
         gc.collect()

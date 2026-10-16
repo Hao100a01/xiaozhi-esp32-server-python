@@ -1,11 +1,11 @@
-"""RAG（检索增强生成）链路测试。
+"""Test chuỗi RAG (retrieval-augmented generation).
 
-xiaozhi-esp32-server 项目里没有独立的 RAG provider —— RAG 由
-MemoryProvider（mem0ai / powermem）的 ``query_memory`` 配合 LLM 工具
-调用实现。本测试聚焦「save → query → 拿到检索结果」这一核心链路。
+Dự án xiaozhi-esp32-server không có RAG provider độc lập — RAG được thực hiện bởi
+``query_memory`` của MemoryProvider (mem0ai / powermem) phối hợp với tool call của LLM.
+Test này tập trung vào chuỗi cốt lõi "save → query → nhận kết quả retrieval".
 
-Mock 模式（默认）：mem0/powermem 等云调用走 shim，不发请求。
-Live 模式（``RUN_LIVE_API_TESTS=1``）：真发请求到所选 memory provider。
+Chế độ Mock (mặc định): các cuộc gọi cloud như mem0/powermem đi qua shim, không gửi request.
+Chế độ Live (``RUN_LIVE_API_TESTS=1``): gửi request thật tới memory provider đã chọn.
 """
 from __future__ import annotations
 
@@ -27,21 +27,22 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 def _build_memory_provider():
     name = get_selected_provider_name("Memory")
     if not name:
-        pytest.skip("selected_module.Memory 未设置")
+        pytest.skip("selected_module.Memory chưa được đặt")
     cfg = get_provider_config("Memory", name)
     if not cfg:
-        pytest.skip(f"Memory provider '{name}' 配置缺失")
+        pytest.skip(f"Memory provider '{name}' thiếu cấu hình")
     ptype = get_provider_type("Memory", name)
     if not ptype:
-        pytest.skip(f"Memory '{name}' 的 type 字段缺失")
+        pytest.skip(f"Memory '{name}' thiếu trường type")
     from core.utils.memory import create_instance
 
     return create_instance(ptype, cfg, None)
 
 
 def test_rag_query_after_save_returns_string() -> None:
-    """保存后 query_memory 应返回字符串（nomem 返回空串也合法）。"""
+    """Sau khi save, query_memory phải trả về chuỗi (nomem trả về chuỗi rỗng cũng hợp lệ)."""
     provider = _build_memory_provider()
+    # Dữ liệu test: nội dung message / query đưa vào memory provider (giữ nguyên để kiểm tra retrieval).
     msgs = [
         {"role": "user", "content": "我喜欢喝咖啡"},
         {"role": "assistant", "content": "好的记住了"},
@@ -52,14 +53,15 @@ def test_rag_query_after_save_returns_string() -> None:
         return await provider.query_memory("咖啡")
 
     result = asyncio.run(run())
-    assert isinstance(result, str), f"query_memory 应返回 str，得到 {type(result).__name__}"
+    assert isinstance(result, str), f"query_memory phải trả về str, được {type(result).__name__}"
 
 
 def test_rag_query_no_match_returns_empty() -> None:
-    """query 不存在内容时返回空字符串，不抛异常。"""
+    """Khi query nội dung không tồn tại thì trả về chuỗi rỗng, không ném exception."""
     provider = _build_memory_provider()
 
     async def run():
+        # Dữ liệu test: keyword cố ý không khớp gì trong memory.
         return await provider.query_memory("完全不存在的关键词xyz")
 
     result = asyncio.run(run())
@@ -67,10 +69,11 @@ def test_rag_query_no_match_returns_empty() -> None:
 
 
 def test_rag_empty_query_handled() -> None:
-    """空 query 不应抛异常。"""
+    """Query rỗng không được ném exception."""
     provider = _build_memory_provider()
 
     async def run():
+        # Dữ liệu test: nội dung lưu / query rỗng.
         await provider.save_memory([{"role": "user", "content": "测试"}], "s")
         return await provider.query_memory("")
 

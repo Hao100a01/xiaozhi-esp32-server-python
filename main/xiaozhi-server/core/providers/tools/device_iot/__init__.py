@@ -1,4 +1,4 @@
-"""设备端IoT工具模块"""
+"""Module công cụ IoT phía thiết bị"""
 
 from .iot_descriptor import IotDescriptor
 from .iot_handler import handleIotDescriptors, handleIotStatus

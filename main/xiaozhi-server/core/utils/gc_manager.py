@@ -1,6 +1,6 @@
 """
-全局GC管理模块
-定期执行垃圾回收，避免频繁触发GC导致的GIL锁问题
+Module quản lý GC toàn cục
+Thực thi thu gom rác định kỳ, tránh vấn đề khoá GIL do kích hoạt GC quá thường xuyên
 """
 
 import gc
@@ -13,14 +13,14 @@ logger = setup_logging()
 
 
 class GlobalGCManager:
-    """全局垃圾回收管理器"""
+    """Bộ quản lý thu gom rác toàn cục"""
 
     def __init__(self, interval_seconds=300):
         """
-        初始化GC管理器
+        Khởi tạo bộ quản lý GC
 
         Args:
-            interval_seconds: GC执行间隔（秒），默认300秒（5分钟）
+            interval_seconds: Khoảng cách thực thi GC (giây), mặc định 300 giây (5 phút)
         """
         self.interval_seconds = interval_seconds
         self._task = None
@@ -28,21 +28,21 @@ class GlobalGCManager:
         self._lock = threading.Lock()
 
     async def start(self):
-        """启动定时GC任务"""
+        """Khởi động task GC định kỳ"""
         if self._task is not None:
-            logger.bind(tag=TAG).warning("GC管理器已经在运行")
+            logger.bind(tag=TAG).warning("Bộ quản lý GC đã đang chạy")
             return
 
-        logger.bind(tag=TAG).info(f"启动全局GC管理器，间隔{self.interval_seconds}秒")
+        logger.bind(tag=TAG).info(f"Khởi động bộ quản lý GC toàn cục, khoảng cách {self.interval_seconds} giây")
         self._stop_event.clear()
         self._task = asyncio.create_task(self._gc_loop())
 
     async def stop(self):
-        """停止定时GC任务"""
+        """Dừng task GC định kỳ"""
         if self._task is None:
             return
 
-        logger.bind(tag=TAG).info("停止全局GC管理器")
+        logger.bind(tag=TAG).info("Dừng bộ quản lý GC toàn cục")
         self._stop_event.set()
 
         if self._task and not self._task.done():
@@ -55,35 +55,35 @@ class GlobalGCManager:
         self._task = None
 
     async def _gc_loop(self):
-        """GC循环任务"""
+        """Task vòng lặp GC"""
         try:
             while not self._stop_event.is_set():
-                # 等待指定间隔
+                # Chờ khoảng cách chỉ định
                 try:
                     await asyncio.wait_for(
                         self._stop_event.wait(), timeout=self.interval_seconds
                     )
-                    # 如果stop_event被设置，退出循环
+                    # Nếu stop_event được đặt, thoát vòng lặp
                     break
                 except asyncio.TimeoutError:
-                    # 超时表示到了执行GC的时间
+                    # Timeout nghĩa là đã đến lúc thực thi GC
                     pass
 
-                # 执行GC
+                # Thực thi GC
                 await self._run_gc()
 
         except asyncio.CancelledError:
-            logger.bind(tag=TAG).info("GC循环任务被取消")
+            logger.bind(tag=TAG).info("Task vòng lặp GC đã bị huỷ")
             raise
         except Exception as e:
-            logger.bind(tag=TAG).error(f"GC循环任务异常: {e}")
+            logger.bind(tag=TAG).error(f"Task vòng lặp GC bất thường: {e}")
         finally:
-            logger.bind(tag=TAG).info("GC循环任务已退出")
+            logger.bind(tag=TAG).info("Task vòng lặp GC đã thoát")
 
     async def _run_gc(self):
-        """执行垃圾回收"""
+        """Thực thi thu gom rác"""
         try:
-            # 在线程池中执行GC，避免阻塞事件循环
+            # Thực thi GC trong thread pool, tránh chặn event loop
             loop = asyncio.get_running_loop()
 
             def do_gc():
@@ -95,26 +95,26 @@ class GlobalGCManager:
 
             before, collected, after = await loop.run_in_executor(None, do_gc)
             logger.bind(tag=TAG).debug(
-                f"全局GC执行完成 - 回收对象: {collected}, "
-                f"对象数量: {before} -> {after}"
+                f"GC toàn cục thực thi xong - đối tượng đã thu gom: {collected}, "
+                f"Số lượng đối tượng: {before} -> {after}"
             )
         except Exception as e:
-            logger.bind(tag=TAG).error(f"执行GC时出错: {e}")
+            logger.bind(tag=TAG).error(f"Lỗi khi thực thi GC: {e}")
 
 
-# 全局单例
+# Singleton toàn cục
 _gc_manager_instance = None
 
 
 def get_gc_manager(interval_seconds=300):
     """
-    获取全局GC管理器实例（单例模式）
+    Lấy instance bộ quản lý GC toàn cục (mẫu singleton)
 
     Args:
-        interval_seconds: GC执行间隔（秒），默认300秒（5分钟）
+        interval_seconds: Khoảng cách thực thi GC (giây), mặc định 300 giây (5 phút)
 
     Returns:
-        GlobalGCManager实例
+        Instance GlobalGCManager
     """
     global _gc_manager_instance
     if _gc_manager_instance is None:

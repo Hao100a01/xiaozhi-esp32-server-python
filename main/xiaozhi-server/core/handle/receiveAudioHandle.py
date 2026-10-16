@@ -15,61 +15,61 @@ TAG = __name__
 
 
 async def handleAudioMessage(conn: "ConnectionHandler", pcm_frame):
-    # 当前片段是否有人说话
+    # Đoạn hiện tại có người nói không
     have_voice = conn.vad.is_vad(conn, pcm_frame)
-    # 如果设备刚刚被唤醒，短暂忽略VAD检测
+    # Nếu thiết bị vừa được đánh thức, tạm thời bỏ qua phát hiện VAD
     if hasattr(conn, "just_woken_up") and conn.just_woken_up:
         have_voice = False
-        # 设置一个短暂延迟后恢复VAD检测
+        # Đặt một độ trễ ngắn rồi khôi phục phát hiện VAD
         if not hasattr(conn, "vad_resume_task") or conn.vad_resume_task.done():
             conn.vad_resume_task = asyncio.create_task(resume_vad_detection(conn))
         return
-    # 服务端AEC功能需要实时触发打断
+    # Chức năng AEC phía server cần kích hoạt ngắt theo thời gian thực
     if conn.client_aec and have_voice:
         if conn.client_is_speaking and conn.client_listen_mode != "manual":
             await handleAbortMessage(conn)
-    # 设备长时间空闲检测，用于say goodbye
+    # Phát hiện thiết bị nhàn rỗi lâu, dùng để say goodbye
     await no_voice_close_connect(conn, have_voice)
-    # 接收音频
+    # Nhận audio
     await conn.asr.receive_audio(conn, pcm_frame, have_voice)
 
 
 async def resume_vad_detection(conn: "ConnectionHandler"):
-    # 等待2秒后恢复VAD检测
+    # Chờ 2 giây rồi khôi phục phát hiện VAD
     await asyncio.sleep(2)
     conn.just_woken_up = False
 
 
 async def startToChat(conn: "ConnectionHandler", text):
-    # 检查输入是否是JSON格式（包含说话人信息）
+    # Kiểm tra đầu vào có phải định dạng JSON (chứa thông tin người nói)
     speaker_name = None
     actual_text = text
 
     try:
-        # 尝试解析JSON格式的输入
+        # Thử phân tích đầu vào định dạng JSON
         if text.strip().startswith("{") and text.strip().endswith("}"):
             data = json.loads(text)
             if "speaker" in data and "content" in data:
                 speaker_name = data["speaker"]
                 actual_content = data["content"]
-                conn.logger.bind(tag=TAG).info(f"解析到说话人信息: {speaker_name}")
+                conn.logger.bind(tag=TAG).info(f"Phân tích được thông tin người nói: {speaker_name}")
 
-                # 仅在该说话人首次出现时保留 {"speaker":...} JSON，让模型自然称呼一次；
-                # 后续轮降为纯文本，避免每轮重复出现名字诱导模型反复称呼
+                # Chỉ giữ JSON {"speaker":...} khi người nói này xuất hiện lần đầu, để model gọi tên một cách tự nhiên một lần;
+                # Các lượt sau hạ xuống text thuần, tránh tên lặp lại mỗi lượt khiến model gọi tên liên tục
                 if speaker_name not in conn.introduced_speakers:
                     conn.introduced_speakers.add(speaker_name)
                     actual_text = text
                 else:
                     actual_text = actual_content
             elif "content" in data:
-                # FunASR 等返回 {"content","language","emotion"}：只把识别正文交给 LLM，
-                # 否则整段 JSON 会进入对话历史
+                # FunASR v.v. trả về {"content","language","emotion"}: chỉ đưa chính văn nhận diện cho LLM,
+                # nếu không cả đoạn JSON sẽ đi vào lịch sử hội thoại
                 actual_text = data["content"]
     except (json.JSONDecodeError, KeyError):
-        # 如果解析失败，继续使用原始文本
+        # Nếu phân tích thất bại, tiếp tục dùng text gốc
         pass
 
-    # 保存说话人信息到连接对象
+    # Lưu thông tin người nói vào đối tượng kết nối
     if speaker_name:
         conn.current_speaker = speaker_name
     else:
@@ -79,7 +79,7 @@ async def startToChat(conn: "ConnectionHandler", text):
         await check_bind_device(conn)
         return
 
-    # 如果当日的输出字数大于限定的字数
+    # Nếu số từ output trong ngày lớn hơn số từ giới hạn
     if conn.max_output_size > 0:
         if check_device_output_limit(
             conn.headers.get("device-id"), conn.max_output_size
@@ -87,21 +87,21 @@ async def startToChat(conn: "ConnectionHandler", text):
             await max_out_size(conn)
             return
 
-    # manual 模式下不打断正在播放的内容
+    # Ở chế độ manual không ngắt nội dung đang phát
     if conn.client_is_speaking and conn.client_listen_mode != "manual":
         await handleAbortMessage(conn)
 
-    # 首先进行意图分析，使用实际文本内容
+    # Trước tiên phân tích ý định, dùng nội dung text thực tế
     intent_handled = await handle_user_intent(conn, actual_text)
 
     if intent_handled:
-        # 如果意图已被处理，不再进行聊天
+        # Nếu ý định đã được xử lý thì không chat nữa
         return
 
-    # 意图未被处理，继续常规聊天流程，使用实际文本内容
+    # Ý định chưa được xử lý, tiếp tục quy trình chat thông thường, dùng nội dung text thực tế
     await send_stt_message(conn, actual_text)
 
-    # 准备开始新会话
+    # Chuẩn bị bắt đầu phiên mới
     conn.client_abort = False
 
     conn.executor.submit(conn.chat, actual_text)
@@ -111,7 +111,7 @@ async def no_voice_close_connect(conn: "ConnectionHandler", have_voice):
     if have_voice:
         conn.last_activity_time = time.time() * 1000
         return
-    # 只有在已经初始化过时间戳的情况下才进行超时检查
+    # Chỉ kiểm tra timeout khi timestamp đã được khởi tạo
     if conn.last_activity_time > 0.0:
         no_voice_time = time.time() * 1000 - conn.last_activity_time
         close_connection_no_voice_time = int(
@@ -125,19 +125,19 @@ async def no_voice_close_connect(conn: "ConnectionHandler", have_voice):
             conn.client_abort = False
             end_prompt = conn.config.get("end_prompt", {})
             if end_prompt and end_prompt.get("enable", True) is False:
-                conn.logger.bind(tag=TAG).info("结束对话，无需发送结束提示语")
+                conn.logger.bind(tag=TAG).info("Kết thúc hội thoại, không cần gửi câu kết thúc")
                 await conn.close()
                 return
             prompt = end_prompt.get("prompt")
             if not prompt:
-                prompt = "请你以```时间过得真快```未来头，用富有感情、依依不舍的话来结束这场对话吧。！"
+                prompt = "Hãy dùng ```thời gian trôi thật nhanh``` làm câu mở đầu, nói lời kết thúc cuộc trò chuyện này thật giàu cảm xúc, đầy lưu luyến nhé!"
             await startToChat(conn, prompt)
 
 
 async def max_out_size(conn: "ConnectionHandler"):
-    # 播放超出最大输出字数的提示
+    # Phát thông báo vượt quá số từ output tối đa
     conn.client_abort = False
-    text = "不好意思，我现在有点事情要忙，明天这个时候我们再聊，约好了哦！明天不见不散，拜拜！"
+    text = "Xin lỗi nhé, giờ tôi có chút việc bận, mai giờ này mình nói chuyện tiếp nhé, hứa rồi đấy! Mai không gặp không về, tạm biệt!"
     await send_stt_message(conn, text)
     file_path = "config/assets/max_output_size.wav"
     opus_packets = await audio_to_data(file_path)
@@ -147,36 +147,36 @@ async def max_out_size(conn: "ConnectionHandler"):
 
 async def check_bind_device(conn: "ConnectionHandler"):
     if conn.bind_code:
-        # 确保bind_code是6位数字
+        # Đảm bảo bind_code là 6 chữ số
         if len(conn.bind_code) != 6:
-            conn.logger.bind(tag=TAG).error(f"无效的绑定码格式: {conn.bind_code}")
-            text = "绑定码格式错误，请检查配置。"
+            conn.logger.bind(tag=TAG).error(f"Định dạng mã liên kết không hợp lệ: {conn.bind_code}")
+            text = "Định dạng mã liên kết sai, vui lòng kiểm tra cấu hình."
             await send_stt_message(conn, text)
             return
 
-        text = f"请登录控制面板，输入{conn.bind_code}，绑定设备。"
+        text = f"Hãy đăng nhập bảng điều khiển, nhập {conn.bind_code} để liên kết thiết bị."
         await send_stt_message(conn, text)
 
-        # 播放提示音
+        # Phát âm báo
         music_path = "config/assets/bind_code.wav"
         opus_packets = await audio_to_data(music_path)
         conn.tts.tts_audio_queue.put((SentenceType.FIRST, opus_packets, text))
 
-        # 逐个播放数字
-        for i in range(6):  # 确保只播放6位数字
+        # Phát từng chữ số
+        for i in range(6):  # Đảm bảo chỉ phát 6 chữ số
             try:
                 digit = conn.bind_code[i]
                 num_path = f"config/assets/bind_code/{digit}.wav"
                 num_packets = await audio_to_data(num_path)
                 conn.tts.tts_audio_queue.put((SentenceType.MIDDLE, num_packets, None))
             except Exception as e:
-                conn.logger.bind(tag=TAG).error(f"播放数字音频失败: {e}")
+                conn.logger.bind(tag=TAG).error(f"Phát audio chữ số thất bại: {e}")
                 continue
         conn.tts.tts_audio_queue.put((SentenceType.LAST, [], None))
     else:
-        # 播放未绑定提示
+        # Phát thông báo chưa liên kết
         conn.client_abort = False
-        text = f"没有找到该设备的版本信息，请正确配置 OTA地址，然后重新编译固件。"
+        text = f"Không tìm thấy thông tin phiên bản của thiết bị, hãy cấu hình đúng địa chỉ OTA rồi biên dịch lại firmware."
         await send_stt_message(conn, text)
         music_path = "config/assets/bind_not_found.wav"
         opus_packets = await audio_to_data(music_path)

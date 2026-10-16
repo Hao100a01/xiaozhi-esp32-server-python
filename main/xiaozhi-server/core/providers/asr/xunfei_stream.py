@@ -20,10 +20,10 @@ from core.providers.asr.dto.dto import InterfaceType
 TAG = __name__
 logger = setup_logging()
 
-# 帧状态常量
-STATUS_FIRST_FRAME = 0  # 第一帧的标识
-STATUS_CONTINUE_FRAME = 1  # 中间帧标识
-STATUS_LAST_FRAME = 2  # 最后一帧的标识
+# Hằng số trạng thái khung
+STATUS_FIRST_FRAME = 0  # Đánh dấu khung đầu tiên
+STATUS_CONTINUE_FRAME = 1  # Đánh dấu khung giữa
+STATUS_LAST_FRAME = 2  # Đánh dấu khung cuối cùng
 
 
 class ASRProvider(ASRProviderBase):
@@ -37,15 +37,15 @@ class ASRProvider(ASRProviderBase):
         self.is_processing = False
         self.server_ready = False
 
-        # 讯飞配置
+        # Cấu hình iFlytek
         self.app_id = config.get("app_id")
         self.api_key = config.get("api_key")
         self.api_secret = config.get("api_secret")
 
         if not all([self.app_id, self.api_key, self.api_secret]):
-            raise ValueError("必须提供app_id、api_key和api_secret")
+            raise ValueError("Phải cung cấp app_id, api_key và api_secret")
 
-        # 识别参数
+        # Tham số nhận dạng
         self.iat_params = {
             "domain": config.get("domain", "slm"),
             "language": config.get("language", "zh_cn"),
@@ -57,18 +57,18 @@ class ASRProvider(ASRProviderBase):
         self.delete_audio_file = delete_audio_file
 
     def create_url(self) -> str:
-        """生成认证URL"""
+        """Tạo URL xác thực"""
         url = "ws://iat.cn-huabei-1.xf-yun.com/v1"
-        # 生成RFC1123格式的时间戳
+        # Tạo timestamp định dạng RFC1123
         now = datetime.now()
         date = format_date_time(mktime(now.timetuple()))
 
-        # 拼接字符串
+        # Nối chuỗi
         signature_origin = "host: " + "iat.cn-huabei-1.xf-yun.com" + "\n"
         signature_origin += "date: " + date + "\n"
         signature_origin += "GET " + "/v1 " + "HTTP/1.1"
 
-        # 进行hmac-sha256进行加密
+        # Dùng hmac-sha256 để mã hoá
         signature_sha = hmac.new(
             self.api_secret.encode("utf-8"),
             signature_origin.encode("utf-8"),
@@ -84,14 +84,14 @@ class ASRProvider(ASRProviderBase):
             encoding="utf-8"
         )
 
-        # 将请求的鉴权参数组合为字典
+        # Gộp các tham số xác thực của yêu cầu thành dict
         v = {
             "authorization": authorization,
             "date": date,
             "host": "iat.cn-huabei-1.xf-yun.com",
         }
 
-        # 拼接鉴权参数，生成url
+        # Nối tham số xác thực, tạo url
         url = url + "?" + urlencode(v)
         return url
 
@@ -99,35 +99,35 @@ class ASRProvider(ASRProviderBase):
         await super().open_audio_channels(conn)
 
     async def receive_audio(self, conn: "ConnectionHandler", pcm_frame, audio_have_voice):
-        # 先调用父类方法处理基础逻辑
+        # Gọi phương thức lớp cha trước để xử lý logic cơ bản
         await super().receive_audio(conn, pcm_frame, audio_have_voice)
 
-        # 如果本次有声音，且之前没有建立连接
+        # Nếu lần này có âm thanh, và trước đó chưa thiết lập kết nối
         if audio_have_voice and self.asr_ws is None and not self.is_processing:
             try:
                 await self._start_recognition(conn)
             except Exception as e:
-                logger.bind(tag=TAG).error(f"建立ASR连接失败: {str(e)}")
+                logger.bind(tag=TAG).error(f"Thiết lập kết nối ASR thất bại: {str(e)}")
                 await self._cleanup()
                 return
 
-        # 发送当前音频数据
+        # Gửi dữ liệu âm thanh hiện tại
         if self.asr_ws and self.is_processing and self.server_ready:
             try:
                 await self._send_audio_frame(pcm_frame, STATUS_CONTINUE_FRAME)
             except Exception as e:
-                logger.bind(tag=TAG).warning(f"发送音频数据时发生错误: {e}")
+                logger.bind(tag=TAG).warning(f"Đã xảy ra lỗi khi gửi dữ liệu âm thanh: {e}")
                 await self._cleanup()
 
     async def _start_recognition(self, conn: "ConnectionHandler"):
-        """开始识别会话"""
+        """Bắt đầu phiên nhận dạng"""
         try:
             self.is_processing = True
-            # 建立WebSocket连接
+            # Thiết lập kết nối WebSocket
             ws_url = self.create_url()
-            logger.bind(tag=TAG).info(f"正在连接ASR服务: {ws_url[:50]}...")
+            logger.bind(tag=TAG).info(f"Đang kết nối dịch vụ ASR: {ws_url[:50]}...")
 
-            # 如果为手动模式,设置超时时长为一分钟
+            # Nếu là chế độ thủ công, đặt thời gian chờ là một phút
             if conn.client_listen_mode == "manual":
                 self.iat_params["eos"] = 60000
 
@@ -139,29 +139,29 @@ class ASRProvider(ASRProviderBase):
                 close_timeout=10,
             )
 
-            logger.bind(tag=TAG).info("ASR WebSocket连接已建立")
+            logger.bind(tag=TAG).info("Kết nối ASR WebSocket đã được thiết lập")
             self.server_ready = False
             self.forward_task = asyncio.create_task(self._forward_results(conn))
 
-            # 发送首帧音频
+            # Gửi khung âm thanh đầu tiên
             if conn.asr_audio and len(conn.asr_audio) > 0:
                 first_pcm = conn.asr_audio[-1] if conn.asr_audio else b""
                 await self._send_audio_frame(first_pcm, STATUS_FIRST_FRAME)
                 self.server_ready = True
-                logger.bind(tag=TAG).info("已发送首帧，开始识别")
+                logger.bind(tag=TAG).info("Đã gửi khung đầu tiên, bắt đầu nhận dạng")
 
-                # 发送缓存的音频数据
+                # Gửi dữ liệu âm thanh đã đệm
                 for cached_pcm in conn.asr_audio[-10:]:
                     try:
                         await self._send_audio_frame(cached_pcm, STATUS_CONTINUE_FRAME)
                     except Exception as e:
-                        logger.bind(tag=TAG).info(f"发送缓存音频数据时发生错误: {e}")
+                        logger.bind(tag=TAG).info(f"Đã xảy ra lỗi khi gửi dữ liệu âm thanh đã đệm: {e}")
                         break
 
         except Exception as e:
-            logger.bind(tag=TAG).error(f"建立ASR连接失败: {str(e)}")
+            logger.bind(tag=TAG).error(f"Thiết lập kết nối ASR thất bại: {str(e)}")
             if hasattr(e, "__cause__") and e.__cause__:
-                logger.bind(tag=TAG).error(f"错误原因: {str(e.__cause__)}")
+                logger.bind(tag=TAG).error(f"Nguyên nhân lỗi: {str(e.__cause__)}")
             if self.asr_ws:
                 await self.asr_ws.close()
                 self.asr_ws = None
@@ -169,7 +169,7 @@ class ASRProvider(ASRProviderBase):
             raise
 
     async def _send_audio_frame(self, audio_data: bytes, status: int):
-        """发送音频帧"""
+        """Gửi khung âm thanh"""
         if not self.asr_ws:
             return
 
@@ -186,13 +186,13 @@ class ASRProvider(ASRProviderBase):
         await self.asr_ws.send(json.dumps(frame_data, ensure_ascii=False))
 
     async def _forward_results(self, conn: "ConnectionHandler"):
-        """转发识别结果"""
+        """Chuyển tiếp kết quả nhận dạng"""
         try:
             while not conn.stop_event.is_set():
                 try:
                     response = await asyncio.wait_for(self.asr_ws.recv(), timeout=60)
                     result = json.loads(response)
-                    logger.bind(tag=TAG).debug(f"收到ASR结果: {result}")
+                    logger.bind(tag=TAG).debug(f"Đã nhận kết quả ASR: {result}")
 
                     header = result.get("header", {})
                     payload = result.get("payload", {})
@@ -201,20 +201,20 @@ class ASRProvider(ASRProviderBase):
 
                     if code != 0:
                         logger.bind(tag=TAG).error(
-                            f"识别错误，错误码: {code}, 消息: {header.get('message', '')}"
+                            f"Lỗi nhận dạng, mã lỗi: {code}, thông điệp: {header.get('message', '')}"
                         )
-                        if code in [10114, 10160]:  # 连接问题
+                        if code in [10114, 10160]:  # Sự cố kết nối
                             break
                         continue
 
-                    # 处理识别结果
+                    # Xử lý kết quả nhận dạng
                     if payload and "result" in payload:
                         text_data = payload["result"]["text"]
                         if text_data:
-                            # 解码base64文本
+                            # Giải mã văn bản base64
                             decoded_text = base64.b64decode(text_data).decode("utf-8")
                             text_json = json.loads(decoded_text)
-                            # 提取文本内容
+                            # Trích xuất nội dung văn bản
                             text_ws = text_json.get("ws", [])
                             for i in text_ws:
                                 for j in i.get("cw", []):
@@ -222,54 +222,54 @@ class ASRProvider(ASRProviderBase):
                                     self.text += w
 
                     if status == 2:
-                        logger.bind(tag=TAG).debug("收到最终识别结果，触发处理")
+                        logger.bind(tag=TAG).debug("Đã nhận kết quả nhận dạng cuối cùng, kích hoạt xử lý")
                         await self.handle_voice_stop(conn, conn.asr_audio)
                         break
 
                 except asyncio.TimeoutError:
-                    logger.bind(tag=TAG).error("接收结果超时")
+                    logger.bind(tag=TAG).error("Nhận kết quả hết thời gian chờ")
                     break
                 except websockets.ConnectionClosed:
-                    logger.bind(tag=TAG).info("ASR服务连接已关闭")
+                    logger.bind(tag=TAG).info("Kết nối dịch vụ ASR đã đóng")
                     self.is_processing = False
                     break
                 except Exception as e:
-                    logger.bind(tag=TAG).error(f"处理ASR结果时发生错误: {str(e)}")
+                    logger.bind(tag=TAG).error(f"Đã xảy ra lỗi khi xử lý kết quả ASR: {str(e)}")
                     if hasattr(e, "__cause__") and e.__cause__:
-                        logger.bind(tag=TAG).error(f"错误原因: {str(e.__cause__)}")
+                        logger.bind(tag=TAG).error(f"Nguyên nhân lỗi: {str(e.__cause__)}")
                     self.is_processing = False
                     break
 
         except Exception as e:
-            logger.bind(tag=TAG).error(f"ASR结果转发任务发生错误: {str(e)}")
+            logger.bind(tag=TAG).error(f"Tác vụ chuyển tiếp kết quả ASR đã xảy ra lỗi: {str(e)}")
             if hasattr(e, "__cause__") and e.__cause__:
-                logger.bind(tag=TAG).error(f"错误原因: {str(e.__cause__)}")
+                logger.bind(tag=TAG).error(f"Nguyên nhân lỗi: {str(e.__cause__)}")
         finally:
-            # 清理连接资源
+            # Dọn dẹp tài nguyên kết nối
             await self._cleanup()
             conn.reset_audio_states()
 
     async def handle_voice_stop(
         self, conn: "ConnectionHandler", asr_audio_task: List[bytes]
     ):
-        """处理语音停止，发送最后一帧并处理识别结果"""
+        """Xử lý dừng giọng nói, gửi khung cuối cùng và xử lý kết quả nhận dạng"""
         try:
-            # 先发送最后一帧表示音频结束
+            # Gửi khung cuối cùng trước để báo hiệu âm thanh kết thúc
             if self.asr_ws and self.is_processing:
                 try:
                     await self._send_audio_frame(b"", STATUS_LAST_FRAME)
-                    logger.bind(tag=TAG).debug(f"已发送停止请求")
+                    logger.bind(tag=TAG).debug(f"Đã gửi yêu cầu dừng")
 
                     await asyncio.sleep(0.25)
                 except Exception as e:
-                    logger.bind(tag=TAG).error(f"发送停止请求失败: {e}")
+                    logger.bind(tag=TAG).error(f"Gửi yêu cầu dừng thất bại: {e}")
 
             await super().handle_voice_stop(conn, asr_audio_task)
         except Exception as e:
-            logger.bind(tag=TAG).error(f"处理语音停止失败: {e}")
+            logger.bind(tag=TAG).error(f"Xử lý dừng giọng nói thất bại: {e}")
             import traceback
 
-            logger.bind(tag=TAG).debug(f"异常详情: {traceback.format_exc()}")
+            logger.bind(tag=TAG).debug(f"Chi tiết ngoại lệ: {traceback.format_exc()}")
 
     def stop_ws_connection(self):
         if self.asr_ws:
@@ -278,51 +278,51 @@ class ASRProvider(ASRProviderBase):
         self.is_processing = False
 
     async def _send_stop_request(self):
-        """发送停止识别请求（不关闭连接）"""
+        """Gửi yêu cầu dừng nhận dạng (không đóng kết nối)"""
         if self.asr_ws:
             try:
-                # 先停止音频发送
+                # Dừng gửi âm thanh trước
                 self.is_processing = False
                 await self._send_audio_frame(b"", STATUS_LAST_FRAME)
-                logger.bind(tag=TAG).debug("已发送停止请求")
+                logger.bind(tag=TAG).debug("Đã gửi yêu cầu dừng")
             except Exception as e:
-                logger.bind(tag=TAG).error(f"发送停止请求失败: {e}")
+                logger.bind(tag=TAG).error(f"Gửi yêu cầu dừng thất bại: {e}")
 
     async def _cleanup(self):
-        """清理资源（关闭连接）"""
+        """Dọn dẹp tài nguyên (đóng kết nối)"""
         logger.bind(tag=TAG).debug(
-            f"开始ASR会话清理 | 当前状态: processing={self.is_processing}, server_ready={self.server_ready}"
+            f"Bắt đầu dọn dẹp phiên ASR | Trạng thái hiện tại: processing={self.is_processing}, server_ready={self.server_ready}"
         )
 
-        # 状态重置
+        # Đặt lại trạng thái
         self.is_processing = False
         self.server_ready = False
-        logger.bind(tag=TAG).debug("ASR状态已重置")
+        logger.bind(tag=TAG).debug("Trạng thái ASR đã được đặt lại")
 
-        # 关闭连接
+        # Đóng kết nối
         if self.asr_ws:
             try:
-                logger.bind(tag=TAG).debug("正在关闭WebSocket连接")
+                logger.bind(tag=TAG).debug("Đang đóng kết nối WebSocket")
                 await asyncio.wait_for(self.asr_ws.close(), timeout=2.0)
-                logger.bind(tag=TAG).debug("WebSocket连接已关闭")
+                logger.bind(tag=TAG).debug("Kết nối WebSocket đã đóng")
             except Exception as e:
-                logger.bind(tag=TAG).error(f"关闭WebSocket连接失败: {e}")
+                logger.bind(tag=TAG).error(f"Đóng kết nối WebSocket thất bại: {e}")
             finally:
                 self.asr_ws = None
 
-        # 清理任务引用
+        # Dọn dẹp tham chiếu tác vụ
         self.forward_task = None
 
-        logger.bind(tag=TAG).debug("ASR会话清理完成")
+        logger.bind(tag=TAG).debug("Dọn dẹp phiên ASR hoàn tất")
 
     async def speech_to_text(self, opus_data, session_id, artifacts=None):
-        """获取识别结果"""
+        """Lấy kết quả nhận dạng"""
         result = self.text
         self.text = ""
         return result, None
 
     async def close(self):
-        """资源清理方法"""
+        """Phương thức dọn dẹp tài nguyên"""
         if self.asr_ws:
             await self.asr_ws.close()
             self.asr_ws = None

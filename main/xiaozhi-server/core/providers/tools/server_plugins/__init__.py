@@ -1,4 +1,4 @@
-"""服务端插件工具模块"""
+"""Module công cụ plugin phía máy chủ"""
 
 from .plugin_executor import ServerPluginExecutor
 

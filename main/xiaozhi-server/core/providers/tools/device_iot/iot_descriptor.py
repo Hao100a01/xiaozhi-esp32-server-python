@@ -1,4 +1,4 @@
-"""IoT设备描述符定义"""
+"""Định nghĩa bộ mô tả thiết bị IoT"""
 
 from config.logger import setup_logging
 
@@ -7,7 +7,7 @@ logger = setup_logging()
 
 
 class IotDescriptor:
-    """IoT设备描述符"""
+    """Bộ mô tả thiết bị IoT"""
 
     def __init__(self, name, description, properties, methods):
         self.name = name
@@ -15,7 +15,7 @@ class IotDescriptor:
         self.properties = []
         self.methods = []
 
-        # 根据描述创建属性
+        # Tạo thuộc tính theo mô tả
         if properties is not None:
             for key, value in properties.items():
                 property_item = {}
@@ -29,13 +29,13 @@ class IotDescriptor:
                     property_item["value"] = ""
                 self.properties.append(property_item)
 
-        # 根据描述创建方法
+        # Tạo phương thức theo mô tả
         if methods is not None:
             for key, value in methods.items():
                 method = {}
                 method["description"] = value["description"]
                 method["name"] = key
-                # 检查方法是否有参数
+                # Kiểm tra phương thức có tham số không
                 if "parameters" in value:
                     method["parameters"] = {}
                     for k, v in value["parameters"].items():

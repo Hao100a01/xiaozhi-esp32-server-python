@@ -12,23 +12,23 @@ def check_config_file():
     if config_file_valid:
         return
     """
-    简化的配置检查，仅提示用户配置文件的使用情况
+    Kiểm tra cấu hình đơn giản, chỉ thông báo tình trạng dùng file cấu hình
     """
     custom_config_file = get_project_dir() + "data/." + default_config_file
     if not os.path.exists(custom_config_file):
         raise FileNotFoundError(
-            "找不到data/.config.yaml文件，请按教程确认该配置文件是否存在"
+            "Không tìm thấy file data/.config.yaml, vui lòng theo hướng dẫn kiểm tra file cấu hình này có tồn tại không"
         )
 
-    # 检查是否从API读取配置
+    # Kiểm tra có đọc cấu hình từ API không
     config = asyncio.run(load_config())
     if config.get("read_config_from_api", False):
-        print("从API读取配置")
+        print("Đọc cấu hình từ API")
         old_config_origin = read_config(custom_config_file)
         if old_config_origin.get("selected_module") is not None:
-            error_msg = "您的配置文件好像既包含智控台的配置又包含本地配置：\n"
-            error_msg += "\n建议您：\n"
-            error_msg += "1、将根目录的config_from_api.yaml文件复制到data下，重命名为.config.yaml\n"
-            error_msg += "2、按教程配置好接口地址和密钥\n"
+            error_msg = "File cấu hình của bạn dường như chứa cả cấu hình 智控台 lẫn cấu hình local:\n"
+            error_msg += "\nGợi ý:\n"
+            error_msg += "1. Copy file config_from_api.yaml ở thư mục gốc vào thư mục data, đổi tên thành .config.yaml\n"
+            error_msg += "2. Theo hướng dẫn cấu hình địa chỉ API và khóa bí mật\n"
             raise ValueError(error_msg)
     config_file_valid = True

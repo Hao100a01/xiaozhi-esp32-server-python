@@ -24,10 +24,10 @@ class MemoryProvider(MemoryProviderBase):
 
         try:
             self.client = MemoryClient(api_key=self.api_key)
-            logger.bind(tag=TAG).info("成功连接到 Mem0ai 服务")
+            logger.bind(tag=TAG).info("Kết nối tới dịch vụ Mem0ai thành công")
         except Exception as e:
-            logger.bind(tag=TAG).error(f"连接到 Mem0ai 服务时发生错误: {str(e)}")
-            logger.bind(tag=TAG).error(f"详细错误: {traceback.format_exc()}")
+            logger.bind(tag=TAG).error(f"Đã xảy ra lỗi khi kết nối tới dịch vụ Mem0ai: {str(e)}")
+            logger.bind(tag=TAG).error(f"Lỗi chi tiết: {traceback.format_exc()}")
             self.use_mem0 = False
 
     async def save_memory(self, msgs, session_id=None):
@@ -65,7 +65,7 @@ class MemoryProvider(MemoryProviderBase):
                 )
                 logger.bind(tag=TAG).debug(f"Save memory result: {result}")
         except Exception as e:
-            logger.bind(tag=TAG).error(f"保存记忆失败: {str(e)}")
+            logger.bind(tag=TAG).error(f"Lưu ký ức thất bại: {str(e)}")
 
         return None
 
@@ -117,5 +117,5 @@ class MemoryProvider(MemoryProviderBase):
             logger.bind(tag=TAG).debug(f"Query results: {memories_str}")
             return memories_str
         except Exception as e:
-            logger.bind(tag=TAG).error(f"查询记忆失败: {str(e)}")
+            logger.bind(tag=TAG).error(f"Truy vấn ký ức thất bại: {str(e)}")
             return ""

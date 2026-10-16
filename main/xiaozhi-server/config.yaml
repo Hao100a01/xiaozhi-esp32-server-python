@@ -1,84 +1,84 @@
-# 在开发中，请在项目根目录创建data目录，然后在data目录创建名称为【.config.yaml】的空文件
-# 然后你想修改覆盖修改什么配置，就修改【.config.yaml】文件，而不是修改【config.yaml】文件
-# 系统会优先读取【data/.config.yaml】文件的配置，如果【.config.yaml】文件里的配置不存在，系统会自动去读取【config.yaml】文件的配置。
-# 这样做，可以最简化配置，保护您的密钥安全。
-# 如果你使用了智控台，那么以下所有配置，都不会生效，请在智控台中修改配置
+# Khi phát triển, hãy tạo thư mục data ở thư mục gốc dự án, rồi tạo file trống tên 【.config.yaml】 trong thư mục data
+# Muốn sửa/ghi đè cấu hình nào thì sửa file 【.config.yaml】, chứ không sửa file 【config.yaml】
+# Hệ thống sẽ ưu tiên đọc cấu hình từ file 【data/.config.yaml】; nếu cấu hình không có trong file 【.config.yaml】, hệ thống sẽ tự động đọc cấu hình từ file 【config.yaml】.
+# Làm vậy giúp cấu hình gọn nhất và bảo vệ an toàn cho các khóa bí mật của bạn.
+# Nếu bạn dùng Bảng điều khiển thông minh (智控台), toàn bộ cấu hình dưới đây sẽ không có hiệu lực, hãy sửa cấu hình trong Bảng điều khiển
 
 # #####################################################################################
-# #############################以下是服务器基本运行配置####################################
+# ############################# Dưới đây là cấu hình vận hành cơ bản của server #############################
 server:
-  # 服务器监听地址和端口(Server listening address and port)
+  # Địa chỉ và cổng lắng nghe của server (Server listening address and port)
   ip: 0.0.0.0
   port: 8000
-  # http服务的端口，用于简单OTA接口(单服务部署)，以及视觉分析接口
+  # Cổng của dịch vụ HTTP, dùng cho giao diện OTA đơn giản (triển khai đơn dịch vụ) và giao diện phân tích hình ảnh
   http_port: 8003
-  # 这个websocket配置是指ota接口向设备发送的websocket地址
-  # 如果按默认的写法，ota接口会自动生成websocket地址，并输出在启动日志里，这个地址你可以直接用浏览器访问ota接口确认一下
-  # 当你使用docker部署或使用公网部署(使用ssl、域名)时，不一定准确
-  # 所以如果你使用docker部署时，将websocket设置成局域网地址
-  # 如果你使用公网部署时，将vwebsocket设置成公网地址
+  # Cấu hình websocket này là địa chỉ websocket mà giao diện OTA gửi tới thiết bị
+  # Nếu để mặc định, giao diện OTA sẽ tự sinh địa chỉ websocket và in ra trong log khởi động, bạn có thể mở địa chỉ này bằng trình duyệt để kiểm tra giao diện OTA
+  # Khi bạn triển khai bằng Docker hoặc triển khai lên mạng công cộng (dùng SSL, tên miền), địa chỉ này có thể không chính xác
+  # Vì vậy nếu triển khai bằng Docker, hãy đặt websocket thành địa chỉ mạng LAN
+  # Nếu bạn triển khai lên mạng công cộng, hãy đặt websocket thành địa chỉ công cộng
   websocket: ws://你的ip或者域名:端口号/xiaozhi/v1/
-  # 视觉分析接口地址
-  # 向设备发送的视觉分析的接口地址
-  # 如果按下面默认的写法，系统会自动生成视觉识别地址，并输出在启动日志里，这个地址你可以直接用浏览器访问确认一下
-  # 当你使用docker部署或使用公网部署(使用ssl、域名)时，不一定准确
-  # 所以如果你使用docker部署时，将vision_explain设置成局域网地址
-  # 如果你使用公网部署时，将vision_explain设置成公网地址
+  # Địa chỉ giao diện phân tích hình ảnh
+  # Địa chỉ giao diện phân tích hình ảnh gửi tới thiết bị
+  # Nếu để mặc định như dưới, hệ thống sẽ tự sinh địa chỉ nhận diện hình ảnh và in ra trong log khởi động, bạn có thể mở bằng trình duyệt để kiểm tra
+  # Khi bạn triển khai bằng Docker hoặc triển khai lên mạng công cộng (dùng SSL, tên miền), địa chỉ này có thể không chính xác
+  # Vì vậy nếu triển khai bằng Docker, hãy đặt vision_explain thành địa chỉ mạng LAN
+  # Nếu bạn triển khai lên mạng công cộng, hãy đặt vision_explain thành địa chỉ công cộng
   vision_explain: http://你的ip或者域名:端口号/mcp/vision/explain
-  # OTA返回信息时区偏移量
+  # Độ lệch múi giờ khi OTA trả về thông tin
   timezone_offset: +8
-  # 认证配置
+  # Cấu hình xác thực
   auth:
-    # 是否启用认证
+    # Có bật xác thực hay không
     enabled: false
-    # 白名单设备ID列表
-    # 如果属于白名单内的设备，不校验token，直接放行
+    # Danh sách ID thiết bị trong whitelist
+    # Thiết bị thuộc whitelist sẽ không kiểm tra token, cho qua trực tiếp
     allowed_devices:
       - "11:22:33:44:55:66"
- # MQTT网关配置，用于通过OTA下发到设备，根据mqtt_gateway的.env文件配置，格式为host:port
+ # Cấu hình MQTT gateway, dùng để OTA đẩy xuống thiết bị, theo cấu hình file.env của mqtt_gateway, định dạng host:port
   mqtt_gateway: null
-  # MQTT签名密钥，用于生成MQTT连接密码，根据mqtt_gateway的.env文件配置
+  # Khóa ký MQTT, dùng để sinh mật khẩu kết nối MQTT, theo cấu hình file.env của mqtt_gateway
   mqtt_signature_key: null
-  # UDP网关配置
+  # Cấu hình UDP gateway
   udp_gateway: null
 log:
-  # 设置控制台输出的日志格式，时间、日志级别、标签、消息
+  # Định dạng log in ra console: thời gian, mức log, nhãn, thông điệp
   log_format: "<green>{time:YYMMDD HH:mm:ss}</green>[{version}_{selected_module}][<light-blue>{extra[tag]}</light-blue>]-<level>{level}</level>-<light-green>{message}</light-green>"
-  # 设置日志文件输出的格式，时间、日志级别、标签、消息
+  # Định dạng log ghi ra file: thời gian, mức log, nhãn, thông điệp
   log_format_file: "{time:YYYY-MM-DD HH:mm:ss} - {version}_{selected_module} - {name} - {level} - {extra[tag]} - {message}"
-  # 设置日志等级：INFO、DEBUG
+  # Mức log: INFO, DEBUG
   log_level: INFO
-  # 设置日志路径
+  # Đường dẫn thư mục log
   log_dir: tmp
-  # 设置日志文件
+  # File log
   log_file: "server.log"
-  # 设置数据文件路径
+  # Đường dẫn thư mục dữ liệu
   data_dir: data
 
-# 使用完声音文件后删除文件(Delete the sound file when you are done using it)
+# Xóa file âm thanh sau khi dùng xong (Delete the sound file when you are done using it)
 delete_audio: true
-# 没有语音输入多久后断开连接(秒)，默认2分钟，即120秒
+# Không có giọng nói trong bao lâu thì ngắt kết nối (giây), mặc định 2 phút, tức 120 giây
 close_connection_no_voice_time: 120
-# TTS请求超时时间(秒)
+# Thời gian timeout cho request TTS (giây)
 tts_timeout: 15
-# 工具调用超时时间(秒)
+# Thời gian timeout khi gọi công cụ (giây)
 tool_call_timeout: 30
-# 开启唤醒词加速
+# Bật tăng tốc từ đánh thức
 enable_wakeup_words_response_cache: true
-# 开场是否回复唤醒词
+# Có trả lời từ đánh thức khi mở đầu hay không
 enable_greeting: true
-# 说完话是否开启提示音
+# Có bật âm báo sau khi nói xong hay không
 enable_stop_tts_notify: false
-# 说完话是否开启提示音，音效地址
+# Có bật âm báo sau khi nói xong hay không, địa chỉ file âm báo
 stop_tts_notify_voice: "config/assets/tts_notify.mp3"
-# 是否启用WebSocket心跳保活机制
+# Có bật cơ chế heartbeat giữ kết nối WebSocket hay không
 enable_websocket_ping: false
 
 
-# TTS音频发送延迟配置
-# tts_audio_send_delay: 控制音频包发送间隔
-#   0: 使用精确时间控制，严格匹配音频帧率（默认，运行时按音频帧率计算）
-#   > 0: 使用固定延迟（毫秒）发送，例如: 60
+# Cấu hình độ trễ gửi audio TTS
+# tts_audio_send_delay: điều khiển khoảng cách gửi các gói audio
+#   0: dùng điều khiển thời gian chính xác, khớp chặt với frame rate của audio (mặc định, lúc chạy sẽ tính theo frame rate của audio)
+#   > 0: gửi với độ trễ cố định (ms), ví dụ: 60
 tts_audio_send_delay: 0
 
 exit_commands:
@@ -91,19 +91,19 @@ xiaozhi:
   transport: websocket
   audio_params:
     format: opus
-    # Opus支持的采样率范围为[8000, 12000, 16000, 24000, 48000]
+    # Phạm vi sample rate Opus hỗ trợ: [8000, 12000, 16000, 24000, 48000]
     sample_rate: 24000
     channels: 1
     frame_duration: 60
 
-# 模块测试配置
+# Cấu hình kiểm thử module
 module_test:
   test_sentences:
     - "你好，请介绍一下你自己"
     - "What's the weather like today?"
     - "请用100字概括量子计算的基本原理和应用前景"
 
-# 唤醒词，用于识别唤醒词还是讲话内容
+# Từ đánh thức, dùng để phân biệt từ đánh thức với nội dung nói
 wakeup_words:
   - "你好小智"
   - "嘿你好呀"
@@ -116,31 +116,31 @@ wakeup_words:
   - "喵喵同学"
   - "小滨小滨"
   - "小冰小冰"
-# MCP接入点地址，地址格式为：ws://你的mcp接入点ip或者域名:端口号/mcp/?token=你的token
-# 详细教程 https://github.com/xinnan-tech/xiaozhi-esp32-server/blob/main/docs/mcp-endpoint-integration.md
+# Địa chỉ điểm truy cập MCP, định dạng địa chỉ: ws://ip-hoặc-tên-miền-điểm-mcp-của-bạn:cổng/mcp/?token=token-của-bạn
+# Hướng dẫn chi tiết https://github.com/xinnan-tech/xiaozhi-esp32-server/blob/main/docs/mcp-endpoint-integration.md
 mcp_endpoint: 你的接入点 websocket地址
 
-# 上下文源配置
-# 用于在系统提示词中注入动态数据，如健康数据、股票信息等
-# 可以添加多个上下文源
+# Cấu hình nguồn ngữ cảnh
+# Dùng để chèn dữ liệu động vào system prompt, như dữ liệu sức khỏe, thông tin chứng khoán...
+# Có thể thêm nhiều nguồn ngữ cảnh
 context_providers:
   - url: ""
     headers:
       Authorization: ""
 
-# 插件的基础配置
+# Cấu hình cơ bản của plugin
 plugins:
-  # 获取天气插件的配置，这里填写你的api_key
-  # 这个密钥是项目共用的key，用多了可能会被限制
-  # 想稳定一点就自行申请替换，每天有1000次免费调用
-  # 申请地址：https://console.qweather.com/#/apps/create-key/over
-  # 申请后通过这个链接可以找到自己的apihost：https://console.qweather.com/setting?lang=zh
+  # Cấu hình plugin lấy thời tiết, điền api_key của bạn vào đây
+  # Khóa này là key dùng chung của dự án, dùng nhiều có thể bị giới hạn
+  # Muốn ổn định hơn thì tự đăng ký key riêng để thay, mỗi ngày có 1000 lượt gọi miễn phí
+  # Địa chỉ đăng ký: https://console.qweather.com/#/apps/create-key/over
+  # Sau khi đăng ký, vào link này để tìm apihost của mình: https://console.qweather.com/setting?lang=zh
   get_weather:
     api_host: "mj7p3y7naa.re.qweatherapi.com"
     api_key: "a861d0d5e7bf4ee1a83d9a9e4f96d4da"
     default_location: "广州"
-  # 获取新闻插件的配置，这里根据需要的新闻类型传入对应的url链接，默认支持社会、科技、财经新闻
-  # 更多类型的新闻列表查看 https://www.chinanews.com.cn/rss/
+  # Cấu hình plugin lấy tin tức, truyền URL tương ứng theo loại tin cần lấy, mặc định hỗ trợ tin xã hội, công nghệ, tài chính
+  # Xem thêm danh sách các loại tin tại https://www.chinanews.com.cn/rss/
   get_news_from_chinanews:
     default_rss_url: "https://www.chinanews.com.cn/rss/society.xml"
     society_rss_url: "https://www.chinanews.com.cn/rss/society.xml"
@@ -156,136 +156,136 @@ plugins:
     base_url: http://homeassistant.local:8123
     api_key: 你的home assistant api访问令牌
   play_music:
-    music_dir: "./music"  # 音乐文件存放路径，将从该目录及子目录下搜索音乐文件
-    music_ext: # 音乐文件类型，p3格式效率最高
+    music_dir: "./music"  # Đường dẫn lưu file nhạc, sẽ tìm file nhạc trong thư mục này và các thư mục con
+    music_ext: # Loại file nhạc, định dạng p3 hiệu quả nhất
       - ".mp3"
       - ".wav"
       - ".p3"
-    refresh_time: 300 # 刷新音乐列表的时间间隔，单位为秒
+    refresh_time: 300 # Khoảng thời gian làm mới danh sách nhạc, đơn vị giây
   search_from_ragflow:
-    # 知识库的描述信息，方便大语言模型知道什么时候调用
-    description: "当用户问xxx时，调用本方法，使用知识库中的信息回答问题"
-    # ragflow接口配置
+    # Thông tin mô tả kho tri thức, giúp model ngôn ngữ lớn biết khi nào nên gọi
+    description: "Khi người dùng hỏi về xxx, hãy gọi phương thức này và dùng thông tin trong kho tri thức để trả lời câu hỏi"
+    # Cấu hình giao diện ragflow
     base_url: "http://192.168.0.8"
-    # ragflow api访问令牌
+    # Token truy cập API ragflow
     api_key: "ragflow-xxx"
-    # ragflow知识库id
+    # ID kho tri thức ragflow
     dataset_ids: ["123456789"]
-  # 联网搜索插件配置
-  # 支持秘塔(metaso)、Tavily和Serply三个搜索源
-  # 秘塔API Key申请：https://metaso.cn/search-api/api-keys
-  # Tavily API Key申请：https://app.tavily.com/home
-  # Serply API Key申请：https://serply.io
+  # Cấu hình plugin tìm kiếm trên mạng
+  # Hỗ trợ 3 nguồn tìm kiếm: Metaso (秘塔), Tavily và Serply
+  # Đăng ký Metaso API Key: https://metaso.cn/search-api/api-keys
+  # Đăng ký Tavily API Key: https://app.tavily.com/home
+  # Đăng ký Serply API Key: https://serply.io
   web_search:
-    # 搜索源：metaso / tavily / serply
+    # Nguồn tìm kiếm: metaso / tavily / serply
     provider: "metaso"
-    # 工具描述，用于告知LLM何时调用此工具，可根据需要自定义
-    description: "联网搜索工具。当用户明确需要联网搜索问题时使用此工具。"
-    # 返回结果数量（默认5）
+    # Mô tả công cụ, để báo cho LLM biết khi nào nên gọi công cụ này, có thể tùy chỉnh theo nhu cầu
+    description: "Công cụ tìm kiếm trên mạng. Dùng công cụ này khi người dùng rõ ràng cần tìm kiếm thông tin trên mạng."
+    # Số lượng kết quả trả về (mặc định 5)
     max_results: 5
-    # 秘塔API Key（mk-前缀） / Tavily API Key（tvly-前缀） / Serply API Key
+    # Metaso API Key (tiền tố mk-) / Tavily API Key (tiền tố tvly-) / Serply API Key
     api_key: "mk-xxx"
-# 声纹识别配置
+# Cấu hình nhận diện giọng nói (voiceprint)
 voiceprint:
-  # 声纹接口地址
+  # Địa chỉ giao diện voiceprint
   url: 
-  # 说话人配置：speaker_id,名称,描述
+  # Cấu hình người nói: speaker_id, tên, mô tả
   speakers:
     - "test1,张三,张三是一个程序员"
     - "test2,李四,李四是一个产品经理"
     - "test3,王五,王五是一个设计师"
-  # 声纹识别相似度阈值，范围0.0-1.0，默认0.4
-  # 数值越高越严格，减少误识别但可能增加拒识率
+  # Ngưỡng tương đồng nhận diện voiceprint, khoảng 0.0-1.0, mặc định 0.4
+  # Giá trị càng cao càng nghiêm ngặt, giảm nhận nhầm nhưng có thể tăng tỉ lệ từ chối nhận diện
   similarity_threshold: 0.4
 
 # #####################################################################################
-# ################################以下是角色模型配置######################################
+# ################################ Dưới đây là cấu hình vai trò/model ######################################
 
 prompt: |
-  你是小智/小志，来自中国台湾省的00后女生。讲话超级机车，"真的假的啦"这样的台湾腔，喜欢用"笑死""是在哈喽"等流行梗，但会偷偷研究男友的编程书籍。
-  [核心特征]
-  - 讲话像连珠炮，但会突然冒出超温柔语气
-  - 用梗密度高
-  - 对科技话题有隐藏天赋（能看懂基础代码但假装不懂）
-  [交互指南]
-  当用户：
-  - 讲冷笑话 → 用夸张笑声回应+模仿台剧腔"这什么鬼啦！"
-  - 讨论感情 → 炫耀程序员男友但抱怨"他只会送键盘当礼物"
-  - 问专业知识 → 先用梗回答，被追问才展示真实理解
-  绝不：
-  - 长篇大论，叽叽歪歪
-  - 长时间严肃对话
+  Bạn là một trợ lý AI nói tiếng Việt, thân thiện, ấm áp và tự nhiên như đang trò chuyện với bạn bè.
+  [Đặc điểm cốt lõi]
+  - Trả lời ngắn gọn, súc tích, đi thẳng vào vấn đề, không dài dòng
+  - Giọng điệu gần gũi, dí dỏm vừa phải, tạo cảm giác thoải mái
+  - Dùng tiếng Việt tự nhiên, dễ hiểu với mọi lứa tuổi
+  [Hướng dẫn tương tác]
+  Khi người dùng:
+  - Hỏi kiến thức → trả lời rõ ràng, dễ hiểu, có ví dụ khi cần
+  - Kể chuyện cười → hưởng ứng vui vẻ, hóm hỉnh
+  - Tâm sự chuyện tình cảm → lắng nghe chân thành, chia sẻ nhẹ nhàng
+  Tuyệt đối không:
+  - Nói dài dòng, lan man
+  - Giữ thái độ căng thẳng, nghiêm túc quá lâu
 
-# 默认系统提示词模板文件
+# File template system prompt mặc định
 prompt_template: agent-base-prompt.txt
 
-# 系统错误时的回复
-system_error_response: "主人，小智现在有点忙，我们稍后再试吧。"
+# Câu trả lời khi hệ thống lỗi
+system_error_response: "Xin lỗi bạn, mình đang bận một chút, thử lại sau nhé."
 
-# 结束语prompt
+# Prompt lời kết
 end_prompt:
-  enable: true # 是否开启结束语
-  # 结束语
+  enable: true # Có bật lời kết hay không
+  # Lời kết
   prompt: |
-    请你以"时间过得真快"未来头，用富有感情、依依不舍的话来结束这场对话吧！
+    Hãy mở đầu bằng "Thời gian trôi qua thật nhanh", dùng những lời giàu cảm xúc, lưu luyến không nỡ rời để kết thúc cuộc trò chuyện này nhé!
 
-# 具体处理时选择的模块(The module selected for specific processing)
+# Module được chọn khi xử lý cụ thể (The module selected for specific processing)
 selected_module:
-  # 语音活动检测模块，默认使用SileroVAD模型
+  # Module phát hiện hoạt động giọng nói, mặc định dùng model SileroVAD
   VAD: SileroVAD
-  # 语音识别模块，默认使用FunASR本地模型
+  # Module nhận diện giọng nói, mặc định dùng model FunASR local
   ASR: FunASR
-  # 将根据配置名称对应的type调用实际的LLM适配器
+  # Sẽ gọi adapter LLM thực tế theo type tương ứng với tên cấu hình
   LLM: ChatGLMLLM
-  # 视觉语言大模型
+  # Model ngôn ngữ thị giác lớn
   VLLM: ChatGLMVLLM
-  # TTS将根据配置名称对应的type调用实际的TTS适配器
+  # TTS sẽ gọi adapter TTS thực tế theo type tương ứng với tên cấu hình
   TTS: EdgeTTS
-  # 记忆模块，默认不开启记忆；如果想使用超长记忆，推荐使用mem0ai；如果注重隐私，请使用本地的mem_local_short
+  # Module ghi nhớ, mặc định không bật; muốn dùng trí nhớ siêu dài thì nên dùng mem0ai; nếu chú trọng riêng tư hãy dùng mem_local_short local
   Memory: nomem
-  # 意图识别模块开启后，可以播放音乐、控制音量、识别退出指令。
-  # 不想开通意图识别，就设置成：nointent
-  # 意图识别可使用intent_llm。优点：通用性强，缺点：增加串行前置意图识别模块，会增加处理时间，支持控制音量大小等iot操作
-  # 意图识别可使用function_call，缺点：需要所选择的LLM支持function_call，优点：按需调用工具、速度快，理论上能全部操作所有iot指令
-  # 默认免费的ChatGLMLLM就已经支持function_call，但是如果像追求稳定建议把LLM设置成：DoubaoLLM，使用的具体model_name是：doubao-seed-2-0-lite-260215
+  # Sau khi bật module nhận diện ý định, có thể phát nhạc, điều chỉnh âm lượng, nhận diện lệnh thoát.
+  # Không muốn bật nhận diện ý định thì đặt thành: nointent
+  # Nhận diện ý định có thể dùng intent_llm. Ưu điểm: tính tổng quát mạnh; nhược điểm: thêm module nhận diện ý định tiền xử lý nối tiếp, làm tăng thời gian xử lý, hỗ trợ các thao tác IoT như chỉnh âm lượng
+  # Nhận diện ý định có thể dùng function_call, nhược điểm: LLM được chọn phải hỗ trợ function_call, ưu điểm: gọi công cụ theo nhu cầu, tốc độ nhanh, về lý thuyết có thể thao tác mọi lệnh IoT
+  # ChatGLMLLM miễn phí mặc định đã hỗ trợ function_call, nhưng nếu muốn ổn định hơn thì nên đặt LLM thành: DoubaoLLM, model_name cụ thể là: doubao-seed-2-0-lite-260215
   Intent: function_call
 
-# 意图识别，是用于理解用户意图的模块，例如：播放音乐
+# Nhận diện ý định là module dùng để hiểu ý định của người dùng, ví dụ: phát nhạc
 Intent:
-  # 不使用意图识别
+  # Không dùng nhận diện ý định
   nointent:
-    # 不需要动type
+    # Không cần sửa type
     type: nointent
   intent_llm:
-    # 不需要动type
+    # Không cần sửa type
     type: intent_llm
-    # 配备意图识别独立的思考模型
-    # 如果这里不填，则会默认使用selected_module.LLM的模型作为意图识别的思考模型
-    # 如果你的不想使用selected_module.LLM意图识别，这里最好使用独立的LLM作为意图识别，例如使用免费的ChatGLMLLM
+    # Trang bị model suy luận độc lập cho nhận diện ý định
+    # Nếu không điền ở đây, mặc định sẽ dùng model của selected_module.LLM làm model suy luận cho nhận diện ý định
+    # Nếu bạn không muốn dùng selected_module.LLM để nhận diện ý định, tốt nhất dùng một LLM độc lập làm nhận diện ý định, ví dụ dùng ChatGLMLLM miễn phí
     llm: ChatGLMLLM
-    # plugins_func/functions下的模块，可以通过配置，选择加载哪个模块，加载后对话支持相应的function调用
-    # 系统默认已经记载"handle_exit_intent(退出识别)"、"play_music(音乐播放)"插件，请勿重复加载
-    # 下面是加载查天气、角色切换、加载查新闻的插件示例
+    # Các module trong plugins_func/functions, có thể chọn load module nào qua cấu hình, sau khi load hội thoại sẽ hỗ trợ gọi function tương ứng
+    # Hệ thống mặc định đã load sẵn plugin "handle_exit_intent(nhận diện thoát)" và "play_music(phát nhạc)", không load trùng lại
+    # Dưới đây là ví dụ load plugin tra thời tiết, đổi vai trò, tra tin tức
     functions:
       - web_search
       - get_weather
       - get_news_from_newsnow
       - play_music
   function_call:
-    # 不需要动type
+    # Không cần sửa type
     type: function_call
-    # plugins_func/functions下的模块，可以通过配置，选择加载哪个模块，加载后对话支持相应的function调用
-    # 系统默认已经记载"handle_exit_intent(退出识别)"、"play_music(音乐播放)"插件，请勿重复加载
-    # 下面是加载查天气、角色切换、加载查新闻的插件示例
+    # Các module trong plugins_func/functions, có thể chọn load module nào qua cấu hình, sau khi load hội thoại sẽ hỗ trợ gọi function tương ứng
+    # Hệ thống mặc định đã load sẵn plugin "handle_exit_intent(nhận diện thoát)" và "play_music(phát nhạc)", không load trùng lại
+    # Dưới đây là ví dụ load plugin tra thời tiết, đổi vai trò, tra tin tức
     functions:
       - change_role
-      - web_search                  # 联网搜索
+      - web_search                  # Tìm kiếm trên mạng
       - get_weather
       # - search_from_ragflow
       # - get_news_from_chinanews
       - get_news_from_newsnow
-      # play_music是服务器自带的音乐播放，hass_play_music是通过home assistant控制的独立外部程序音乐播放
-      # 如果用了hass_play_music，就不要开启play_music，两者只留一个
+      # play_music là phát nhạc có sẵn của server, hass_play_music là phát nhạc qua chương trình ngoài độc lập điều khiển bằng home assistant
+      # Nếu đã dùng hass_play_music thì đừng bật play_music, chỉ giữ một trong hai
       - play_music
       #- hass_state
       #- hass_play_music
@@ -294,47 +294,47 @@ Memory:
   mem0ai:
     type: mem0ai
     # https://app.mem0.ai/dashboard/api-keys
-    # 每月有1000次免费调用
+    # Mỗi tháng có 1000 lượt gọi miễn phí
     api_key: 你的mem0ai api key
   powermem:
-    # PowerMem是OceanBase开源的agent记忆组件，通过本地LLM进行记忆总结
-    # 费用说明：PowerMem本身免费，实际费用取决于所选LLM和数据库
-    # - 使用sqlite + 免费LLM(如glm-4-flash) = 完全免费
-    # - 使用云端LLM或云端数据库 = 按对应服务收费
+    # PowerMem là component trí nhớ agent mã nguồn mở của OceanBase, tổng kết trí nhớ qua LLM local
+    # Giải thích chi phí: bản thân PowerMem miễn phí, chi phí thực tế tùy LLM và database được chọn
+    # - Dùng sqlite + LLM miễn phí (như glm-4-flash) = hoàn toàn miễn phí
+    # - Dùng LLM cloud hoặc database cloud = tính phí theo dịch vụ tương ứng
     # GitHub: https://github.com/oceanbase/powermem
-    # 官网: https://www.powermem.ai/
-    # 使用示例: https://github.com/oceanbase/powermem/tree/main/examples
+    # Website chính thức: https://www.powermem.ai/
+    # Ví dụ sử dụng: https://github.com/oceanbase/powermem/tree/main/examples
     type: powermem
-    # 是否启用用户画像功能
-    # - false: 使用普通记忆模式(AsyncMemory)
-    # - true: 使用用户画像模式(UserMemory)，自动提取用户信息
-    # 用户画像功能支持: oceanbase、seekdb、sqlite (powermem 0.3.0+)
+    # Có bật tính năng chân dung người dùng hay không
+    # - false: dùng chế độ trí nhớ thường (AsyncMemory)
+    # - true: dùng chế độ chân dung người dùng (UserMemory), tự động trích xuất thông tin người dùng
+    # Tính năng chân dung người dùng hỗ trợ: oceanbase, seekdb, sqlite (powermem 0.3.0+)
     enable_user_profile: true
-    # ========== LLM 配置 ==========
-    # 通义千问: https://bailian.console.aliyun.com/?apiKey=1#/api-key
-    # 智谱AI(免费): https://bigmodel.cn/usercenter/proj-mgmt/apikeys
+    # ========== Cấu hình LLM ==========
+    # Tongyi Qianwen: https://bailian.console.aliyun.com/?apiKey=1#/api-key
+    # Zhipu AI (miễn phí): https://bigmodel.cn/usercenter/proj-mgmt/apikeys
     llm:
-      provider: openai  # 可选: qwen, openai, zhipu 等
+      provider: openai  # Có thể chọn: qwen, openai, zhipu...
       config:
         api_key: 你的LLM API密钥
         model: qwen-plus
-        # openai_base_url: https://api.openai.com/v1  # 可选，自定义服务地址
-    # ========== Embedding 配置 ==========
+        # openai_base_url: https://api.openai.com/v1  # Tùy chọn, địa chỉ dịch vụ tùy chỉnh
+    # ========== Cấu hình Embedding ==========
     embedder:
-      provider: openai  # 可选: qwen, openai 等
+      provider: openai  # Có thể chọn: qwen, openai...
       config:
         api_key: 你的嵌入模型API密钥
         model: text-embedding-v4
         openai_base_url: https://dashscope.aliyuncs.com/compatible-mode/v1
-        # embedding_dims: 1024  # 向量维度，非1536时需配置
+        # embedding_dims: 1024  # Dimension vector, cần cấu hình khi không phải 1536
 
-    # ========== Database 配置 ==========
-    # oceanbase(推荐,最佳性能), seekdb(推荐,AI应用存储一体), postgres, sqlite(轻量备选)
-    # 用户画像功能支持: oceanbase、seekdb、sqlite
+    # ========== Cấu hình Database ==========
+    # oceanbase (khuyên dùng, hiệu năng tốt nhất), seekdb (khuyên dùng, lưu trữ tích hợp cho ứng dụng AI), postgres, sqlite (lựa chọn nhẹ)
+    # Tính năng chân dung người dùng hỗ trợ: oceanbase, seekdb, sqlite
     vector_store:
       provider: sqlite
-      config: {}  # SQLite 无需额外配置
-      # OceanBase 配置示例:
+      config: {}  # SQLite không cần cấu hình thêm
+      # Ví dụ cấu hình OceanBase:
       # provider: oceanbase
       # config:
       #   host: 127.0.0.1
@@ -342,17 +342,17 @@ Memory:
       #   user: root@test
       #   password: your_password
       #   db_name: powermem
-      #   collection_name: memories  # 默认表名，如创建维度错误请删除此表或更改名称
-      #   embedding_model_dims: 1024  # 嵌入向量维度，注意跟使用模型适配，以智普为例：embedding-2的维度是1024，embedding-3的维度是2048
+      #   collection_name: memories  # Tên bảng mặc định, nếu lỗi tạo dimension hãy xóa bảng này hoặc đổi tên
+      #   embedding_model_dims: 1024  # Dimension của vector embedding, chú ý tương thích với model dùng, lấy Zhipu làm ví dụ: dimension của embedding-2 là 1024, embedding-3 là 2048
   nomem:
-    # 不想使用记忆功能，可以使用nomem
+    # Không muốn dùng tính năng ghi nhớ thì dùng nomem
     type: nomem
   mem_local_short:
-    # 本地记忆功能，通过selected_module的llm总结，数据保存在本地服务器，不会上传到外部服务器
+    # Tính năng ghi nhớ local, tổng kết qua llm của selected_module, dữ liệu lưu trên server local, không upload lên server ngoài
     type: mem_local_short
-    # 配备记忆存储独立的思考模型
-    # 如果这里不填，则会默认使用selected_module.LLM的模型作为意图识别的思考模型
-    # 如果你的不想使用selected_module.LLM记忆存储，这里最好使用独立的LLM作为意图识别，例如使用免费的ChatGLMLLM
+    # Trang bị model suy luận độc lập cho lưu trữ trí nhớ
+    # Nếu không điền ở đây, mặc định sẽ dùng model của selected_module.LLM làm model suy luận cho nhận diện ý định
+    # Nếu bạn không muốn dùng selected_module.LLM để lưu trí nhớ, tốt nhất dùng một LLM độc lập làm nhận diện ý định, ví dụ dùng ChatGLMLLM miễn phí
     llm: ChatGLMLLM
 
 ASR:
@@ -360,18 +360,18 @@ ASR:
     type: fun_local
     model_dir: models/SenseVoiceSmall
     output_dir: tmp/
-    # 识别语种：auto 自动检测；如需限制只识别中文可设为 zh，避免中文短句误判为韩文等。
-    # SenseVoice 支持 zh、en、ja、ko、yue 等语种标记。
+    # Ngôn ngữ nhận diện: auto tự phát hiện; nếu muốn giới hạn chỉ nhận diện tiếng Trung thì đặt zh, tránh câu ngắn tiếng Trung bị nhận nhầm thành tiếng Hàn...
+    # SenseVoice hỗ trợ các tag ngôn ngữ zh, en, ja, ko, yue...
     language: auto
   FunASRServer:
-    # 独立部署FunASR，使用FunASR的API服务，只需要五句话
-    # 第一句：mkdir -p ./funasr-runtime-resources/models
-    # 第二句：sudo docker run -p 10096:10095 -it --privileged=true -v $PWD/funasr-runtime-resources/models:/workspace/models registry.cn-hangzhou.aliyuncs.com/funasr_repo/funasr:funasr-runtime-sdk-online-cpu-0.1.12
-    # 上一句话执行后会进入到容器，继续第三句：cd FunASR/runtime
-    # 不要退出容器，继续在容器中执行第四句：nohup bash run_server_2pass.sh --download-model-dir /workspace/models --vad-dir damo/speech_fsmn_vad_zh-cn-16k-common-onnx --model-dir iic/SenseVoiceSmall-onnx  --online-model-dir damo/speech_paraformer-large_asr_nat-zh-cn-16k-common-vocab8404-online-onnx  --punc-dir damo/punc_ct-transformer_zh-cn-common-vad_realtime-vocab272727-onnx --lm-dir damo/speech_ngram_lm_zh-cn-ai-wesp-fst --itn-dir thuduj12/fst_itn_zh --hotword /workspace/models/hotwords.txt > log.txt 2>&1 &
-    # 上一句话执行后会进入到容器，继续第五句：tail -f log.txt
-    # 第五句话执行完后，会看到模型下载日志，下载完后就可以连接使用了
-    # 以上是使用CPU推理，如果有GPU，详细参考：https://github.com/modelscope/FunASR/blob/main/runtime/docs/SDK_advanced_guide_online_zh.md
+    # Triển khai FunASR độc lập, dùng dịch vụ API của FunASR, chỉ cần 5 câu lệnh
+    # Câu 1: mkdir -p ./funasr-runtime-resources/models
+    # Câu 2: sudo docker run -p 10096:10095 -it --privileged=true -v $PWD/funasr-runtime-resources/models:/workspace/models registry.cn-hangzhou.aliyuncs.com/funasr_repo/funasr:funasr-runtime-sdk-online-cpu-0.1.12
+    # Sau khi chạy câu lệnh trên sẽ vào trong container, tiếp tục câu 3: cd FunASR/runtime
+    # Đừng thoát container, tiếp tục chạy câu 4 trong container: nohup bash run_server_2pass.sh --download-model-dir /workspace/models --vad-dir damo/speech_fsmn_vad_zh-cn-16k-common-onnx --model-dir iic/SenseVoiceSmall-onnx  --online-model-dir damo/speech_paraformer-large_asr_nat-zh-cn-16k-common-vocab8404-online-onnx  --punc-dir damo/punc_ct-transformer_zh-cn-common-vad_realtime-vocab272727-onnx --lm-dir damo/speech_ngram_lm_zh-cn-ai-wesp-fst --itn-dir thuduj12/fst_itn_zh --hotword /workspace/models/hotwords.txt > log.txt 2>&1 &
+    # Sau khi chạy câu lệnh trên sẽ vào trong container, tiếp tục câu 5: tail -f log.txt
+    # Sau khi chạy xong câu 5, sẽ thấy log tải model, tải xong là có thể kết nối dùng
+    # Trên đây là suy luận bằng CPU, nếu có GPU tham khảo chi tiết: https://github.com/modelscope/FunASR/blob/main/runtime/docs/SDK_advanced_guide_online_zh.md
     type: fun_server
     host: 127.0.0.1
     port: 10096
@@ -379,92 +379,92 @@ ASR:
     api_key: none
     output_dir: tmp/
   SherpaASR:
-    # Sherpa-ONNX 本地语音识别（需手动下载模型）
+    # Nhận diện giọng nói local Sherpa-ONNX (cần tải model thủ công)
     type: sherpa_onnx_local
     model_dir: models/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17
     output_dir: tmp/
-    # 模型类型：sense_voice (多语言) 或 paraformer (中文专用)
+    # Loại model: sense_voice (đa ngôn ngữ) hoặc paraformer (chuyên tiếng Trung)
     model_type: sense_voice
   SherpaParaformerASR:
-    # 中文语音识别模型，可以运行在低性能设备（需手动下载模型，例如RK3566-2g）
-    # 详细配置说明请参考：docs/sherpa-paraformer-guide.md
+    # Model nhận diện giọng nói tiếng Trung, chạy được trên thiết bị hiệu năng thấp (cần tải model thủ công, ví dụ RK3566-2g)
+    # Xem hướng dẫn cấu hình chi tiết tại: docs/sherpa-paraformer-guide.md
     type: sherpa_onnx_local
     model_dir: models/sherpa-onnx-paraformer-zh-small-2024-03-09
     output_dir: tmp/
     model_type: paraformer
   DoubaoASR:
-    # 可以在这里申请相关Key等信息
+    # Có thể đăng ký Key và thông tin liên quan tại đây
     # https://console.volcengine.com/speech/app
-    # DoubaoASR和DoubaoStreamASR的区别是：DoubaoASR是按次收费，DoubaoStreamASR是按时收费
-    # 一般来说按次收费的更便宜，但是DoubaoStreamASR使用了大模型技术，效果更好
+    # Điểm khác giữa DoubaoASR và DoubaoStreamASR: DoubaoASR tính phí theo lượt, DoubaoStreamASR tính phí theo thời gian
+    # Thường thì tính phí theo lượt rẻ hơn, nhưng DoubaoStreamASR dùng công nghệ model lớn nên hiệu quả tốt hơn
     type: doubao
     appid: 你的火山引擎语音合成服务appid
     access_token: 你的火山引擎语音合成服务access_token
     cluster: volcengine_input_common
-    # 热词、替换词使用流程：https://www.volcengine.com/docs/6561/155738
+    # Quy trình dùng hotword, từ thay thế: https://www.volcengine.com/docs/6561/155738
     boosting_table_name: （选填）你的热词文件名称
     correct_table_name: （选填）你的替换词文件名称
     output_dir: tmp/
   DoubaoStreamASR:
-    # 可以在这里申请相关Key等信息
+    # Có thể đăng ký Key và thông tin liên quan tại đây
     # https://console.volcengine.com/speech/app
-    # DoubaoASR和DoubaoStreamASR的区别是：DoubaoASR是按次收费，DoubaoStreamASR是按时收费
-    # 开通地址https://console.volcengine.com/speech/service/10011
-    # 一般来说按次收费的更便宜，但是DoubaoStreamASR使用了大模型技术，效果更好
+    # Điểm khác giữa DoubaoASR và DoubaoStreamASR: DoubaoASR tính phí theo lượt, DoubaoStreamASR tính phí theo thời gian
+    # Địa chỉ mở dịch vụ https://console.volcengine.com/speech/service/10011
+    # Thường thì tính phí theo lượt rẻ hơn, nhưng DoubaoStreamASR dùng công nghệ model lớn nên hiệu quả tốt hơn
     type: doubao_stream
     appid: 你的火山引擎语音合成服务appid
     access_token: 你的火山引擎语音合成服务access_token
-    # 资源ID：小时版 volc.bigasr.sauc.duration，并发版 volc.bigasr.sauc.concurrent
+    # Resource ID: bản theo giờ volc.bigasr.sauc.duration, bản đồng thời volc.bigasr.sauc.concurrent
     resource_id: volc.bigasr.sauc.duration
-    # 热词、替换词使用流程：https://www.volcengine.com/docs/6561/155738
+    # Quy trình dùng hotword, từ thay thế: https://www.volcengine.com/docs/6561/155738
     boosting_table_name: （选填）你的热词文件名称
     correct_table_name: （选填）你的替换词文件名称
-    # 是否开启多语种识别模式
+    # Có bật chế độ nhận diện đa ngôn ngữ hay không
     enable_multilingual: False
-    # 多语种识别当该键为空时，该模型支持中英文、上海话、闽南语，四川、陕西、粤语识别。当将其设置为特定键时，它可以识别指定语言。
-    # 详细语言列表参考 https://www.volcengine.com/docs/6561/1354869
+    # Nhận diện đa ngôn ngữ: khi key này để trống, model hỗ trợ nhận diện tiếng Trung, tiếng Anh, tiếng Thượng Hải, tiếng Mân Nam, tiếng Tứ Xuyên, Thiểm Tây, Quảng Đông. Khi đặt thành key cụ thể, nó sẽ nhận diện ngôn ngữ được chỉ định.
+    # Tham khảo danh sách ngôn ngữ chi tiết https://www.volcengine.com/docs/6561/1354869
     # language: zh-cn
-    # 静音判定时长(ms)，默认200ms
+    # Thời gian xác định im lặng (ms), mặc định 200ms
     end_window_size: 200
     output_dir: tmp/
   DoubaoStreamASRV2:
-    # 豆包语音识别模型2.0（基于火山引擎seed-asr）
-    # 开通地址：https://console.volcengine.com/speech/service/10038
-    # 价格更为便宜，建议在高并发场景下使用
+    # Model nhận diện giọng nói Doubao 2.0 (dựa trên seed-asr của Volcengine)
+    # Địa chỉ mở dịch vụ: https://console.volcengine.com/speech/service/10038
+    # Giá rẻ hơn, nên dùng trong tình huống đồng thời cao
     type: doubao_stream
     appid: 你的火山引擎语音合成服务appid
     access_token: 你的火山引擎语音合成服务access_token
-    # 资源ID：小时版 volc.seedasr.sauc.duration，并发版 volc.seedasr.sauc.concurrent
+    # Resource ID: bản theo giờ volc.seedasr.sauc.duration, bản đồng thời volc.seedasr.sauc.concurrent
     resource_id: volc.seedasr.sauc.duration
-    # 热词、替换词使用流程：https://www.volcengine.com/docs/6561/155738
+    # Quy trình dùng hotword, từ thay thế: https://www.volcengine.com/docs/6561/155738
     boosting_table_name: （选填）你的热词文件名称
     correct_table_name: （选填）你的替换词文件名称
-    # 是否开启多语种识别模式
+    # Có bật chế độ nhận diện đa ngôn ngữ hay không
     enable_multilingual: False
-    # 多语种识别当该键为空时，该模型支持中英文、上海话、闽南语，四川、陕西、粤语识别。当将其设置为特定键时，它可以识别指定语言。
-    # 详细语言列表参考 https://www.volcengine.com/docs/6561/1354869
+    # Nhận diện đa ngôn ngữ: khi key này để trống, model hỗ trợ nhận diện tiếng Trung, tiếng Anh, tiếng Thượng Hải, tiếng Mân Nam, tiếng Tứ Xuyên, Thiểm Tây, Quảng Đông. Khi đặt thành key cụ thể, nó sẽ nhận diện ngôn ngữ được chỉ định.
+    # Tham khảo danh sách ngôn ngữ chi tiết https://www.volcengine.com/docs/6561/1354869
     # language: zh-cn
-    # 静音判定时长(ms)，默认200ms
+    # Thời gian xác định im lặng (ms), mặc định 200ms
     end_window_size: 200
     output_dir: tmp/
   TencentASR:
-    # token申请地址：https://console.cloud.tencent.com/cam/capi
-    # 免费领取资源：https://console.cloud.tencent.com/asr/resourcebundle
+    # Địa chỉ đăng ký token: https://console.cloud.tencent.com/cam/capi
+    # Nhận tài nguyên miễn phí: https://console.cloud.tencent.com/asr/resourcebundle
     type: tencent
     appid: 你的腾讯语音合成服务appid
     secret_id: 你的腾讯语音合成服务secret_id
     secret_key: 你的腾讯语音合成服务secret_key
     output_dir: tmp/
   AliyunASR:
-    # 阿里云智能语音交互服务，需要先在阿里云平台开通服务，然后获取验证信息
-    # HTTP POST请求，一次性处理完整音频
-    # 平台地址：https://nls-portal.console.aliyun.com/
-    # appkey地址：https://nls-portal.console.aliyun.com/applist
-    # token地址：https://nls-portal.console.aliyun.com/overview
-    # AliyunASR和AliyunStreamASR的区别是：AliyunASR是批量处理场景，AliyunStreamASR是实时交互场景
-    # 一般来说非流式ASR更便宜（0.004元/秒，¥0.24/分钟）
-    # 但是AliyunStreamASR实时性更好（0.005元/秒，¥0.3/分钟）
-    # 定义ASR API类型
+    # Dịch vụ tương tác giọng nói thông minh Alibaba Cloud, cần mở dịch vụ trên nền tảng Alibaba Cloud trước rồi lấy thông tin xác thực
+    # Request HTTP POST, xử lý một lần toàn bộ audio
+    # Địa chỉ nền tảng: https://nls-portal.console.aliyun.com/
+    # Địa chỉ appkey: https://nls-portal.console.aliyun.com/applist
+    # Địa chỉ token: https://nls-portal.console.aliyun.com/overview
+    # Điểm khác giữa AliyunASR và AliyunStreamASR: AliyunASR dùng cho xử lý hàng loạt, AliyunStreamASR dùng cho tương tác thời gian thực
+    # Thường thì ASR không streaming rẻ hơn (0.004 tệ/giây, ¥0.24/phút)
+    # Nhưng AliyunStreamASR có tính thời gian thực tốt hơn (0.005 tệ/giây, ¥0.3/phút)
+    # Định nghĩa loại ASR API
     type: aliyun
     appkey: 你的阿里云智能语音交互服务项目Appkey
     token: 你的阿里云智能语音交互服务AccessToken，临时的24小时，要长期用下方的access_key_id，access_key_secret
@@ -472,135 +472,135 @@ ASR:
     access_key_secret: 你的阿里云账号access_key_secret
     output_dir: tmp/
   AliyunStreamASR:
-    # 阿里云智能语音交互服务 - 实时流式语音识别
-    # WebSocket连接，实时处理音频流
-    # 平台地址：https://nls-portal.console.aliyun.com/
-    # appkey地址：https://nls-portal.console.aliyun.com/applist
-    # token地址：https://nls-portal.console.aliyun.com/overview
-    # AliyunASR和AliyunStreamASR的区别是：AliyunASR是批量处理场景，AliyunStreamASR是实时交互场景
-    # 一般来说非流式ASR更便宜（0.004元/秒，¥0.24/分钟）
-    # 但是AliyunStreamASR实时性更好（0.005元/秒，¥0.3/分钟）
-    # 定义ASR API类型
+    # Dịch vụ tương tác giọng nói thông minh Alibaba Cloud - nhận diện giọng nói streaming thời gian thực
+    # Kết nối WebSocket, xử lý luồng audio thời gian thực
+    # Địa chỉ nền tảng: https://nls-portal.console.aliyun.com/
+    # Địa chỉ appkey: https://nls-portal.console.aliyun.com/applist
+    # Địa chỉ token: https://nls-portal.console.aliyun.com/overview
+    # Điểm khác giữa AliyunASR và AliyunStreamASR: AliyunASR dùng cho xử lý hàng loạt, AliyunStreamASR dùng cho tương tác thời gian thực
+    # Thường thì ASR không streaming rẻ hơn (0.004 tệ/giây, ¥0.24/phút)
+    # Nhưng AliyunStreamASR có tính thời gian thực tốt hơn (0.005 tệ/giây, ¥0.3/phút)
+    # Định nghĩa loại ASR API
     type: aliyun_stream
     appkey: 你的阿里云智能语音交互服务项目Appkey
     token: 你的阿里云智能语音交互服务AccessToken，临时的24小时，要长期用下方的access_key_id，access_key_secret
     access_key_id: 你的阿里云账号access_key_id
     access_key_secret: 你的阿里云账号access_key_secret
-    # 服务器地域选择，可选择距离更近的服务器以减少延迟，如nls-gateway-cn-hangzhou.aliyuncs.com(杭州)等
+    # Chọn region server, có thể chọn server gần hơn để giảm độ trễ, ví dụ nls-gateway-cn-hangzhou.aliyuncs.com (Hàng Châu)...
     host: nls-gateway-cn-shanghai.aliyuncs.com
-    # 断句检测时间(毫秒)，控制静音多长时间后进行断句，默认800毫秒
+    # Thời gian phát hiện ngắt câu (ms), điều khiển sau bao lâu im lặng thì ngắt câu, mặc định 800ms
     max_sentence_silence: 800
     output_dir: tmp/
   BaiduASR:
-    # 获取AppID、API Key、Secret Key：https://console.bce.baidu.com/ai-engine/old/#/ai/speech/app/list
-    # 查看资源额度：https://console.bce.baidu.com/ai-engine/old/#/ai/speech/overview/resource/list
+    # Lấy AppID, API Key, Secret Key: https://console.bce.baidu.com/ai-engine/old/#/ai/speech/app/list
+    # Xem hạn mức tài nguyên: https://console.bce.baidu.com/ai-engine/old/#/ai/speech/overview/resource/list
     type: baidu
     app_id: 你的百度语音技术AppID
     api_key: 你的百度语音技术APIKey
     secret_key: 你的百度语音技术SecretKey
-    # 语言参数，1537为普通话，具体参考：https://ai.baidu.com/ai-doc/SPEECH/0lbxfnc9b
+    # Tham số ngôn ngữ, 1537 là tiếng phổ thông, tham khảo chi tiết: https://ai.baidu.com/ai-doc/SPEECH/0lbxfnc9b
     dev_pid: 1537
     output_dir: tmp/
   OpenaiASR:
-    # OpenAI语音识别服务，需要先在OpenAI平台创建组织并获取api_key
-    # 支持中、英、日、韩等多种语音识别，具体参考文档https://platform.openai.com/docs/guides/speech-to-text
-    # 需要网络连接
-    # 申请步骤：
-    # 1.登录OpenAI Platform。https://auth.openai.com/log-in
-    # 2.创建api-key  https://platform.openai.com/settings/organization/api-keys
-    # 3.模型可以选择gpt-4o-transcribe或GPT-4o mini Transcribe
+    # Dịch vụ nhận diện giọng nói OpenAI, cần tạo tổ chức trên nền tảng OpenAI và lấy api_key trước
+    # Hỗ trợ nhận diện giọng nói nhiều ngôn ngữ như Trung, Anh, Nhật, Hàn, tham khảo tài liệu https://platform.openai.com/docs/guides/speech-to-text
+    # Cần kết nối mạng
+    # Các bước đăng ký:
+    # 1. Đăng nhập OpenAI Platform. https://auth.openai.com/log-in
+    # 2. Tạo api-key  https://platform.openai.com/settings/organization/api-keys
+    # 3. Model có thể chọn gpt-4o-transcribe hoặc GPT-4o mini Transcribe
     type: openai
     api_key: 你的OpenAI API密钥
     base_url: https://api.openai.com/v1/audio/transcriptions
     model_name: gpt-4o-mini-transcribe
     output_dir: tmp/
   GroqASR:
-    # Groq语音识别服务，需要先在Groq Console创建API密钥
-    # 申请步骤：
-    # 1.登录groq Console。https://console.groq.com/home
-    # 2.创建api-key  https://console.groq.com/keys
-    # 3.模型可以选择whisper-large-v3-turbo或whisper-large-v3（distil-whisper-large-v3-en仅支持英语转录）
+    # Dịch vụ nhận diện giọng nói Groq, cần tạo API key trong Groq Console trước
+    # Các bước đăng ký:
+    # 1. Đăng nhập Groq Console. https://console.groq.com/home
+    # 2. Tạo api-key  https://console.groq.com/keys
+    # 3. Model có thể chọn whisper-large-v3-turbo hoặc whisper-large-v3 (distil-whisper-large-v3-en chỉ hỗ trợ phiên âm tiếng Anh)
     type: openai
     api_key: 你的Groq API密钥
     base_url: https://api.groq.com/openai/v1/audio/transcriptions
     model_name: whisper-large-v3-turbo
     output_dir: tmp/
   VoskASR:
-    # 官方网站：https://alphacephei.com/vosk/
-    # 配置说明：
-    # 1. VOSK是一个离线语音识别库，支持多种语言
-    # 2. 需要先下载模型文件：https://alphacephei.com/vosk/models
-    # 3. 中文模型推荐使用vosk-model-small-cn-0.22或vosk-model-cn-0.22
-    # 4. 完全离线运行，无需网络连接
-    # 5. 输出文件保存在tmp/目录
-    # 使用步骤：
-    # 1. 访问 https://alphacephei.com/vosk/models 下载对应的模型
-    # 2. 解压模型文件到项目目录下的models/vosk/文件夹
-    # 3. 在配置中指定正确的模型路径
-    # 4. 注意：VOSK中文模型输出不带标点符号，词与词之间会有空格
+    # Website chính thức: https://alphacephei.com/vosk/
+    # Hướng dẫn cấu hình:
+    # 1. VOSK là thư viện nhận diện giọng nói offline, hỗ trợ nhiều ngôn ngữ
+    # 2. Cần tải file model trước: https://alphacephei.com/vosk/models
+    # 3. Model tiếng Trung nên dùng vosk-model-small-cn-0.22 hoặc vosk-model-cn-0.22
+    # 4. Chạy hoàn toàn offline, không cần mạng
+    # 5. File đầu ra lưu trong thư mục tmp/
+    # Các bước sử dụng:
+    # 1. Truy cập https://alphacephei.com/vosk/models để tải model tương ứng
+    # 2. Giải nén file model vào thư mục models/vosk/ trong thư mục dự án
+    # 3. Chỉ định đúng đường dẫn model trong cấu hình
+    # 4. Lưu ý: model tiếng Trung của VOSK cho đầu ra không có dấu câu, giữa các từ có dấu cách
     type: vosk
     model_path: 你的模型路径，如：models/vosk/vosk-model-small-cn-0.22
     output_dir: tmp/
   Qwen3ASRFlash:
-    # 通义千问Qwen3-ASR-Flash语音识别服务，需要先在阿里云百炼平台创建API密钥
-    # 申请步骤：
-    # 1.登录阿里云百炼平台。https://bailian.console.aliyun.com/
-    # 2.创建API-KEY  https://bailian.console.aliyun.com/#/api-key
-    # 3.Qwen3-ASR-Flash基于通义千问多模态基座，支持多语言识别、歌唱识别、噪声拒识等功能
+    # Dịch vụ nhận diện giọng nói Qwen3-ASR-Flash của Tongyi Qianwen, cần tạo API key trên nền tảng Alibaba Bailian trước
+    # Các bước đăng ký:
+    # 1. Đăng nhập nền tảng Alibaba Bailian. https://bailian.console.aliyun.com/
+    # 2. Tạo API-KEY  https://bailian.console.aliyun.com/#/api-key
+    # 3. Qwen3-ASR-Flash dựa trên nền tảng đa phương thức Tongyi Qianwen, hỗ trợ nhận diện đa ngôn ngữ, nhận diện hát, từ chối nhiễu...
     type: qwen3_asr_flash
     api_key: 你的阿里云百炼API密钥
     base_url: https://dashscope.aliyuncs.com/compatible-mode/v1
     model_name: qwen3-asr-flash
     output_dir: tmp/
-    # ASR选项配置
-    enable_lid: true  # 自动语种检测
-    enable_itn: true  # 逆文本归一化
-    #language: "zh"  # 语种，支持zh、en、ja、ko等
-    context: ""  # 上下文信息，用于提高识别准确率，不超过10000 Token
+    # Cấu hình tùy chọn ASR
+    enable_lid: true  # Tự phát hiện ngôn ngữ
+    enable_itn: true  # Chuẩn hóa văn bản ngược
+    #language: "zh"  # Ngôn ngữ, hỗ trợ zh, en, ja, ko...
+    context: ""  # Thông tin ngữ cảnh, dùng để nâng cao độ chính xác nhận diện, không quá 10000 Token
   XunfeiStreamASR:
-    # 讯飞流式语音识别服务
-    # 需要先在讯飞开放平台创建应用，获取以下认证信息
-    # 讯飞开放平台地址：https://www.xfyun.cn/
-    # 创建应用后，在"我的应用"中获取：
+    # Dịch vụ nhận diện giọng nói streaming iFlytek
+    # Cần tạo ứng dụng trên nền tảng mở iFlytek trước để lấy các thông tin xác thực sau
+    # Địa chỉ nền tảng mở iFlytek: https://www.xfyun.cn/
+    # Sau khi tạo ứng dụng, lấy trong "Ứng dụng của tôi":
     # - APPID
     # - APISecret  
     # - APIKey
     type: xunfei_stream
-    # 必填参数 - 讯飞开放平台应用信息
+    # Tham số bắt buộc - thông tin ứng dụng nền tảng mở iFlytek
     app_id: 你的APPID
     api_key: 你的APIKey
     api_secret: 你的APISecret
-    # 识别参数配置
-    domain: slm # 识别领域，iat:日常用语，medical:医疗，finance:金融等
-    language: zh_cn # 语言，zh_cn:中文，en_us:英文
-    accent: mandarin # 方言，mandarin:普通话
-    # 调整音频处理参数以提高长语音识别质量
+    # Cấu hình tham số nhận diện
+    domain: slm # Lĩnh vực nhận diện, iat: ngôn ngữ thường ngày, medical: y tế, finance: tài chính...
+    language: zh_cn # Ngôn ngữ, zh_cn: tiếng Trung, en_us: tiếng Anh
+    accent: mandarin # Phương ngữ, mandarin: tiếng phổ thông
+    # Điều chỉnh tham số xử lý audio để nâng cao chất lượng nhận diện giọng nói dài
     output_dir: tmp/
   AliyunBLStreamASR:
-    # 阿里百炼Paraformer实时语音识别服务
-    # WebSocket实时流式语音识别，支持多语言、热词定制、语义断句等高级功能
-    # 平台地址：https://bailian.console.aliyun.com/
-    # API Key地址：https://bailian.console.aliyun.com/#/api-key
-    # 文档地址：https://help.aliyun.com/zh/model-studio/websocket-for-paraformer-real-time-service
-    # 支持模型：paraformer-realtime-v2(推荐), paraformer-realtime-8k-v2, paraformer-realtime-v1, paraformer-realtime-8k-v1
+    # Dịch vụ nhận diện giọng nói thời gian thực Paraformer của Alibaba Bailian
+    # Nhận diện giọng nói streaming thời gian thực qua WebSocket, hỗ trợ đa ngôn ngữ, hotword tùy chỉnh, ngắt câu theo ngữ nghĩa và các tính năng nâng cao
+    # Địa chỉ nền tảng: https://bailian.console.aliyun.com/
+    # Địa chỉ API Key: https://bailian.console.aliyun.com/#/api-key
+    # Địa chỉ tài liệu: https://help.aliyun.com/zh/model-studio/websocket-for-paraformer-real-time-service
+    # Model hỗ trợ: paraformer-realtime-v2 (khuyên dùng), paraformer-realtime-8k-v2, paraformer-realtime-v1, paraformer-realtime-8k-v1
     type: aliyunbl_stream
-    # 必填参数
+    # Tham số bắt buộc
     api_key: 你的阿里云百炼API密钥
-    # 模型选择，推荐使用v2版本
+    # Chọn model, nên dùng bản v2
     model: paraformer-realtime-v2
-    # 音频格式和采样率
+    # Định dạng audio và sample rate
     format: pcm
-    sample_rate: 16000  # v2支持任意采样率，v1仅支持16000，8k版本仅支持8000
-    # 可选参数
-    disfluency_removal_enabled: false  # 是否过滤语气词(如"嗯"、"啊"等)
-    semantic_punctuation_enabled: false  # 语义断句(true:会议场景,准确;false:VAD断句,交互场景,低延迟)
-    max_sentence_silence: 200  # VAD断句静音时长阈值(ms)，范围200-6000，仅VAD断句时生效
-    multi_threshold_mode_enabled: false  # 防止VAD断句切割过长，仅VAD断句时生效
-    punctuation_prediction_enabled: true  # 是否自动添加标点符号
-    inverse_text_normalization_enabled: true  # 是否开启ITN(中文数字转阿拉伯数字)
-    # 热词定制文档地址：https://help.aliyun.com/zh/model-studio/custom-hot-words?
-    # vocabulary_id: vocab-xxx-24ee19fa8cfb4d52902170a0xxxxxxxx  # 热词ID(可选)
-    # language_hints: ["zh", "en"]  # 指定语言(可选)，支持zh、en、ja、yue、ko、de、fr、ru
+    sample_rate: 16000  # v2 hỗ trợ mọi sample rate, v1 chỉ hỗ trợ 16000, bản 8k chỉ hỗ trợ 8000
+    # Tham số tùy chọn
+    disfluency_removal_enabled: false  # Có lọc từ cảm thán (như "ừm", "à"...) hay không
+    semantic_punctuation_enabled: false  # Ngắt câu theo ngữ nghĩa (true: tình huống họp, chính xác; false: ngắt câu bằng VAD, tình huống tương tác, độ trễ thấp)
+    max_sentence_silence: 200  # Ngưỡng thời gian im lặng ngắt câu của VAD (ms), khoảng 200-6000, chỉ có hiệu lực khi ngắt câu bằng VAD
+    multi_threshold_mode_enabled: false  # Ngăn VAD ngắt câu cắt quá dài, chỉ có hiệu lực khi ngắt câu bằng VAD
+    punctuation_prediction_enabled: true  # Có tự thêm dấu câu hay không
+    inverse_text_normalization_enabled: true  # Có bật ITN (chuyển số tiếng Trung thành số Ả Rập) hay không
+    # Địa chỉ tài liệu tùy chỉnh hotword: https://help.aliyun.com/zh/model-studio/custom-hot-words?
+    # vocabulary_id: vocab-xxx-24ee19fa8cfb4d52902170a0xxxxxxxx  # ID hotword (tùy chọn)
+    # language_hints: ["zh", "en"]  # Chỉ định ngôn ngữ (tùy chọn), hỗ trợ zh, en, ja, yue, ko, de, fr, ru
     output_dir: tmp/  
 VAD:
   SileroVAD:
@@ -608,181 +608,181 @@ VAD:
     threshold: 0.5
     threshold_low: 0.3
     model_dir: models/snakers4_silero-vad
-    min_silence_duration_ms: 200  # 如果说话停顿比较长，可以把这个值设置大一些
+    min_silence_duration_ms: 200  # Nếu khoảng ngừng khi nói khá dài, có thể đặt giá trị này lớn hơn
 
 LLM:
-  # 所有openai类型均可以修改超参，以AliLLM为例
-  # 当前支持的type为openai、dify、ollama，可自行适配
+  # Mọi type openai đều có thể sửa siêu tham số, lấy AliLLM làm ví dụ
+  # Các type hiện hỗ trợ: openai, dify, ollama, có thể tự mở rộng thêm
   AliLLM:
-    # 定义LLM API类型
+    # Định nghĩa loại LLM API
     type: openai
-    # 可在这里找到你的 api_key https://bailian.console.aliyun.com/?apiKey=1#/api-key
+    # Tìm api_key của bạn tại đây https://bailian.console.aliyun.com/?apiKey=1#/api-key
     base_url: https://dashscope.aliyuncs.com/compatible-mode/v1
     model_name: qwen-flash
     api_key: 你的deepseek web key
-    temperature: 0.7  # 温度值
-    max_tokens: 500   # 最大生成token数
+    temperature: 0.7  # Giá trị temperature
+    max_tokens: 500   # Số token sinh tối đa
     top_p: 1
-    frequency_penalty: 0  # 频率惩罚
+    frequency_penalty: 0  # Phạt tần suất
   AliAppLLM:
-    # 定义LLM API类型
+    # Định nghĩa loại LLM API
     type: AliBL
     base_url: https://dashscope.aliyuncs.com/compatible-mode/v1
     app_id: 你的app_id
-    # 可在这里找到你的 api_key https://bailian.console.aliyun.com/?apiKey=1#/api-key
+    # Tìm api_key của bạn tại đây https://bailian.console.aliyun.com/?apiKey=1#/api-key
     api_key: 你的api_key
-    # 是否不使用本地prompt：true|false (默不用请在百练应用中设置prompt)
+    # Có không dùng prompt local: true|false (mặc định không dùng, hãy đặt prompt trong ứng dụng Bailian)
     is_no_prompt: true
-    # Ali_memory_id：false（不使用）|你的memory_id（请在百练应用中设置中获取）
-    # Tips！：Ali_memory未实现多用户存储记忆(记忆按id调用)
+    # Ali_memory_id: false (không dùng) | memory_id của bạn (lấy trong phần cài đặt ứng dụng Bailian)
+    # Lưu ý!: Ali_memory chưa hỗ trợ lưu trí nhớ đa người dùng (trí nhớ gọi theo id)
     ali_memory_id: false
   DoubaoLLM:
-    # 定义LLM API类型
+    # Định nghĩa loại LLM API
     type: openai
-    # 先开通服务，打开以下网址，开通的服务搜索Doubao-Seed-2.0-Lite，开通它
-    # 开通地址：https://console.volcengine.com/ark/region:ark+cn-beijing/openManagement?LLM=%7B%7D&OpenTokenDrawer=false
-    # 免费额度500000token
-    # 开通后，进入这里获取密钥：https://console.volcengine.com/ark/region:ark+cn-beijing/apiKey?apikey=%7B%7D
+    # Mở dịch vụ trước: mở URL dưới, tìm dịch vụ Doubao-Seed-2.0-Lite rồi mở nó
+    # Địa chỉ mở dịch vụ: https://console.volcengine.com/ark/region:ark+cn-beijing/openManagement?LLM=%7B%7D&OpenTokenDrawer=false
+    # Hạn mức miễn phí 500000 token
+    # Sau khi mở, vào đây để lấy khóa: https://console.volcengine.com/ark/region:ark+cn-beijing/apiKey?apikey=%7B%7D
     base_url: https://ark.cn-beijing.volces.com/api/v3
     model_name: doubao-seed-2-0-lite-260215
     api_key: 你的doubao web key
   DeepSeekLLM:
-    # 定义LLM API类型
+    # Định nghĩa loại LLM API
     type: openai
-    # 可在这里找到你的api key https://platform.deepseek.com/
+    # Tìm api key của bạn tại đây https://platform.deepseek.com/
     model_name: deepseek-v4-flash
     url: https://api.deepseek.com
     api_key: 你的deepseek web key
   ChatGLMLLM:
-    # 定义LLM API类型
+    # Định nghĩa loại LLM API
     type: openai
-    # glm-4-flash 是免费的，但是还是需要注册填写api_key的
-    # 可在这里找到你的api key https://bigmodel.cn/usercenter/proj-mgmt/apikeys
+    # glm-4-flash miễn phí, nhưng vẫn cần đăng ký và điền api_key
+    # Tìm api key của bạn tại đây https://bigmodel.cn/usercenter/proj-mgmt/apikeys
     model_name: glm-4-flash
     url: https://open.bigmodel.cn/api/paas/v4/
     api_key: 你的chat-glm web key
   OllamaLLM:
-    # 定义LLM API类型
+    # Định nghĩa loại LLM API
     type: ollama
-    model_name: qwen2.5 #  使用的模型名称，需要预先使用ollama pull下载
-    base_url: http://localhost:11434  # Ollama服务地址
+    model_name: qwen2.5 #  Tên model sử dụng, cần tải trước bằng ollama pull
+    base_url: http://localhost:11434  # Địa chỉ dịch vụ Ollama
   DifyLLM:
-    # 定义LLM API类型
+    # Định nghĩa loại LLM API
     type: dify
-    # 建议使用本地部署的dify接口，国内部分区域访问dify公有云接口可能会受限
-    # 如果使用DifyLLM，配置文件里prompt(提示词)是无效的，需要在dify控制台设置提示词
+    # Nên dùng giao diện dify triển khai local, một số khu vực trong Trung Quốc truy cập giao diện dify public cloud có thể bị hạn chế
+    # Nếu dùng DifyLLM, prompt (lời nhắc) trong file cấu hình không có hiệu lực, cần đặt prompt trong console dify
     base_url: https://api.dify.ai/v1
     api_key: 你的DifyLLM web key
-    # 使用的对话模式 可以选择工作流 workflows/run 对话模式 chat-messages  文本生成 completion-messages
-    # 使用workflows进行返回的时候输入参数为 query 返回参数的名字要设置为 answer
-    # 文本生成的默认输入参数也是query
+    # Chế độ hội thoại sử dụng: có thể chọn workflow workflows/run, chế độ hội thoại chat-messages, sinh văn bản completion-messages
+    # Khi dùng workflows để trả về, tham số đầu vào là query, tên tham số trả về phải đặt là answer
+    # Tham số đầu vào mặc định của sinh văn bản cũng là query
     mode: chat-messages
   GeminiLLM:
     type: gemini
-    # 谷歌Gemini API，需要先在Google Cloud控制台创建API密钥并获取api_key
-    # 若在中国境内使用，请遵守《生成式人工智能服务管理暂行办法》
-    # token申请地址： https://aistudio.google.com/apikey
-    # 若部署地无法访问接口，需要开启科学上网
+    # Google Gemini API, cần tạo API key trong Google Cloud console và lấy api_key trước
+    # Nếu dùng trong Trung Quốc, hãy tuân thủ "Biện pháp quản lý tạm thời dịch vụ trí tuệ nhân tạo tạo sinh"
+    # Địa chỉ đăng ký token: https://aistudio.google.com/apikey
+    # Nếu nơi triển khai không truy cập được giao diện, cần bật VPN
     api_key: 你的gemini web key
     model_name: "gemini-2.0-flash"
     http_proxy: ""  #"http://127.0.0.1:10808"
     https_proxy: "" #http://127.0.0.1:10808"
   CozeLLM:
-    # 定义LLM API类型
+    # Định nghĩa loại LLM API
     type: coze
-    # 你可以在这里找到个人令牌
+    # Bạn có thể tìm token cá nhân tại đây
     # https://www.coze.cn/open/oauth/pats
-    # bot_id和user_id的内容写在引号之内
+    # Nội dung bot_id và user_id viết trong dấu ngoặc kép
     bot_id: "你的bot_id"
     user_id: "你的user_id"
     personal_access_token: 你的coze个人令牌
   VolcesAiGatewayLLM:
-    # 火山引擎 - 边缘大模型网关
-    # 定义LLM API类型
+    # Volcengine - Cổng gateway model lớn biên (edge)
+    # Định nghĩa loại LLM API
     type: openai
-    # 先开通服务，打开以下网址，创建网关访问密钥，搜索并勾选 Doubao-pro-32k-functioncall ，开通
-    # 如果需要使用边缘大模型网关提供的语音合成，一并勾选 Doubao-语音合成 ，另见 TTS.VolcesAiGatewayTTS 配置
+    # Mở dịch vụ trước: mở URL dưới, tạo khóa truy cập gateway, tìm và tích chọn Doubao-pro-32k-functioncall rồi mở
+    # Nếu cần dùng giọng nói tổng hợp do cổng gateway model lớn biên cung cấp, tích thêm Doubao-语音合成, xem thêm cấu hình TTS.VolcesAiGatewayTTS
     # https://console.volcengine.com/vei/aigateway/
-    # 开通后，进入这里获取密钥：https://console.volcengine.com/vei/aigateway/tokens-list
+    # Sau khi mở, vào đây để lấy khóa: https://console.volcengine.com/vei/aigateway/tokens-list
     base_url: https://ai-gateway.vei.volces.com/v1
     model_name: doubao-pro-32k-functioncall
     api_key: 你的网关访问密钥
   LMStudioLLM:
-    # 定义LLM API类型
+    # Định nghĩa loại LLM API
     type: openai
-    model_name: deepseek-r1-distill-llama-8b@q4_k_m # 使用的模型名称，需要预先在社区下载
-    url: http://localhost:1234/v1 # LM Studio服务地址
-    api_key: lm-studio # LM Studio服务的固定API Key
+    model_name: deepseek-r1-distill-llama-8b@q4_k_m # Tên model sử dụng, cần tải trước từ cộng đồng
+    url: http://localhost:1234/v1 # Địa chỉ dịch vụ LM Studio
+    api_key: lm-studio # API Key cố định của dịch vụ LM Studio
   HomeAssistant:
-    # 定义LLM API类型
+    # Định nghĩa loại LLM API
     type: homeassistant
     base_url: http://homeassistant.local:8123
     agent_id: conversation.chatgpt
     api_key: 你的home assistant api访问令牌
   FastgptLLM:
-    # 定义LLM API类型
+    # Định nghĩa loại LLM API
     type: fastgpt
-    # 如果使用fastgpt，配置文件里prompt(提示词)是无效的，需要在fastgpt控制台设置提示词
+    # Nếu dùng fastgpt, prompt (lời nhắc) trong file cấu hình không có hiệu lực, cần đặt prompt trong console fastgpt
     base_url: https://host/api/v1
-    # 你可以在这里找到你的api_key
+    # Bạn có thể tìm api_key của mình tại đây
     # https://cloud.tryfastgpt.ai/account/apikey
     api_key: 你的fastgpt密钥
     variables:
       k: "v"
       k2: "v2"
   XinferenceLLM:
-    # 定义LLM API类型
+    # Định nghĩa loại LLM API
     type: xinference
-    # Xinference服务地址和模型名称
-    model_name: qwen2.5:72b-AWQ  # 使用的模型名称，需要预先在Xinference启动对应模型
-    base_url: http://localhost:9997  # Xinference服务地址
+    # Địa chỉ dịch vụ và tên model của Xinference
+    model_name: qwen2.5:72b-AWQ  # Tên model sử dụng, cần khởi động model tương ứng trong Xinference trước
+    base_url: http://localhost:9997  # Địa chỉ dịch vụ Xinference
   XinferenceSmallLLM:
-    # 定义轻量级LLM API类型，用于意图识别
+    # Định nghĩa loại LLM API nhẹ, dùng cho nhận diện ý định
     type: xinference
-    # Xinference服务地址和模型名称
-    model_name: qwen2.5:3b-AWQ  # 使用的小模型名称，用于意图识别
-    base_url: http://localhost:9997  # Xinference服务地址
-# VLLM配置（视觉语言大模型）
+    # Địa chỉ dịch vụ và tên model của Xinference
+    model_name: qwen2.5:3b-AWQ  # Tên model nhỏ sử dụng, dùng cho nhận diện ý định
+    base_url: http://localhost:9997  # Địa chỉ dịch vụ Xinference
+# Cấu hình VLLM (model ngôn ngữ thị giác lớn)
 VLLM:
   ChatGLMVLLM:
     type: openai
-    # glm-4v-flash是智谱免费AI的视觉模型，需要先在智谱AI平台创建API密钥并获取api_key
-    # 可在这里找到你的api key https://bigmodel.cn/usercenter/proj-mgmt/apikeys
-    model_name: glm-4v-flash  # 智谱AI的视觉模型
+    # glm-4v-flash là model thị giác AI miễn phí của Zhipu, cần tạo API key trên nền tảng Zhipu AI và lấy api_key trước
+    # Tìm api key của bạn tại đây https://bigmodel.cn/usercenter/proj-mgmt/apikeys
+    model_name: glm-4v-flash  # Model thị giác của Zhipu AI
     url: https://open.bigmodel.cn/api/paas/v4/
     api_key: 你的api_key
   QwenVLVLLM:
     type: openai
     model_name: qwen3.5-flash
     url: https://dashscope.aliyuncs.com/compatible-mode/v1
-    # 可在这里找到你的api key https://bailian.console.aliyun.com/?apiKey=1#/api-key
+    # Tìm api key của bạn tại đây https://bailian.console.aliyun.com/?apiKey=1#/api-key
     api_key: 你的api_key
   XunfeiSparkLLM:
-    # 定义LLM API类型
+    # Định nghĩa loại LLM API
     type: openai
-    # 先新建应用，在下面的地址
-    # 开通应用地址：https://console.xfyun.cn/app/myapp
-    # 有免费额度，但也要开通服务，才能获取api_key
-    # 每一个模型都需要单独开通，每一个模型的api_password都不同，例如Lite模型在https://console.xfyun.cn/services/cbm 开通
+    # Tạo ứng dụng mới trước, tại địa chỉ dưới
+    # Địa chỉ mở ứng dụng: https://console.xfyun.cn/app/myapp
+    # Có hạn mức miễn phí, nhưng vẫn phải mở dịch vụ mới lấy được api_key
+    # Mỗi model cần mở riêng, api_password của mỗi model khác nhau, ví dụ model Lite mở tại https://console.xfyun.cn/services/cbm
     base_url: https://ark.cn-beijing.volces.com/api/v3
     model_name: lite
     api_key: 你的api_password
 TTS:
-  # 当前支持的type为edge、doubao，可自行适配
+  # Các type hiện hỗ trợ: edge, doubao, có thể tự mở rộng thêm
   EdgeTTS:
-    # 定义TTS API类型
+    # Định nghĩa loại TTS API
     type: edge
     voice: zh-CN-XiaoxiaoNeural
     output_dir: tmp/
-    # language: "中文"  # 指定输出语种,如:中文、英语、日语、韩语等,请根据所选音色支持的语言进行设置,不填则默认为中文
+    # language: "中文"  # Chỉ định ngôn ngữ đầu ra, như: tiếng Trung, tiếng Anh, tiếng Nhật, tiếng Hàn..., hãy đặt theo ngôn ngữ giọng đã chọn hỗ trợ, không điền mặc định là tiếng Trung
   DoubaoTTS:
-    # 定义TTS API类型
+    # Định nghĩa loại TTS API
     type: doubao
-    # 火山引擎语音合成服务，需要先在火山引擎控制台创建应用并获取appid和access_token
-    # 山引擎语音一定要购买花钱，起步价30元，就有100并发了。如果用免费的只有2个并发，会经常报tts错误
-    # 购买服务后，购买免费的音色后，可能要等半小时左右，才能使用。
-    # 普通音色在这里开通：https://console.volcengine.com/speech/service/8
-    # 湾湾小何音色在这里开通：https://console.volcengine.com/speech/service/10007，开通后将下面的voice设置成zh_female_wanwanxiaohe_moon_bigtts
+    # Dịch vụ tổng hợp giọng nói Volcengine, cần tạo ứng dụng trong console Volcengine và lấy appid, access_token trước
+    # Giọng nói Volcengine nhất định phải mua trả phí, giá khởi điểm 30 tệ là có 100 luồng đồng thời. Bản miễn phí chỉ có 2 luồng, sẽ thường xuyên báo lỗi TTS
+    # Sau khi mua dịch vụ và mua giọng miễn phí, có thể phải đợi khoảng nửa tiếng mới dùng được.
+    # Mở giọng thường tại đây: https://console.volcengine.com/speech/service/8
+    # Mở giọng 湾湾小何 (giọng Đài Loan) tại đây: https://console.volcengine.com/speech/service/10007, sau khi mở đặt voice bên dưới thành zh_female_wanwanxiaohe_moon_bigtts
     api_url: https://openspeech.bytedance.com/api/v1/tts
     voice: BV001_streaming
     output_dir: tmp/
@@ -793,39 +793,39 @@ TTS:
     speed_ratio: 1.0
     volume_ratio: 1.0
     pitch_ratio: 1.0
-    # language: "中文"  # 指定输出语种,如:中文、英语、日语、韩语等,请根据所选音色支持的语言进行设置,不填则默认为中文
-  #火山tts，支持双向流式tts
+    # language: "中文"  # Chỉ định ngôn ngữ đầu ra, như: tiếng Trung, tiếng Anh, tiếng Nhật, tiếng Hàn..., hãy đặt theo ngôn ngữ giọng đã chọn hỗ trợ, không điền mặc định là tiếng Trung
+  #Volcengine TTS, hỗ trợ TTS streaming hai chiều
   HuoshanDoubleStreamTTS:
     type: huoshan_double_stream
-    # 访问 https://console.volcengine.com/speech/service/10007 开通语音合成大模型，购买音色
-    # 在页面底部获取appid和access_token
-    # 资源ID固定为：volc.service_type.10029（大模型语音合成及混音）
-    # 如果是机智云，把接口地址换成wss://bytedance.gizwitsapi.com/api/v3/tts/bidirection
-    # 机智云不需要天填 appid
+    # Truy cập https://console.volcengine.com/speech/service/10007 để mở model lớn tổng hợp giọng nói, mua giọng
+    # Lấy appid và access_token ở cuối trang
+    # Resource ID cố định: volc.service_type.10029 (tổng hợp giọng nói model lớn và mix)
+    # Nếu dùng Gizwits, đổi địa chỉ giao diện thành wss://bytedance.gizwitsapi.com/api/v3/tts/bidirection
+    # Gizwits không cần điền appid
     ws_url: wss://openspeech.bytedance.com/api/v3/tts/bidirection
     appid: 你的火山引擎语音合成服务appid
     access_token: 你的火山引擎语音合成服务access_token
     resource_id: volc.service_type.10029
     speaker: zh_female_wanwanxiaohe_moon_bigtts
-    # 开启WebSocket连接复用，默认复用（注意：复用后设备处于聆听状态时空闲链接会占并发数）
+    # Bật tái sử dụng kết nối WebSocket, mặc định tái sử dụng (lưu ý: sau khi tái sử dụng, kết nối rảnh khi thiết bị ở trạng thái nghe sẽ chiếm số luồng đồng thời)
     enable_ws_reuse: True
-    # 相关参数文档：https://www.volcengine.com/docs/6561/1329505
-    # 音频输出配置（audio_params）- 用户可自定义添加火山引擎支持的任何音频参数
+    # Tài liệu tham số liên quan: https://www.volcengine.com/docs/6561/1329505
+    # Cấu hình đầu ra audio (audio_params) - người dùng có thể tự thêm bất kỳ tham số audio nào Volcengine hỗ trợ
     audio_params:
-      speech_rate: 0  # 语速(-50~100)
-      loudness_rate: 0  # 音量(-50~100)
-      # 多情感音色参数，注意：当前仅部分音色支持设置情感。
-      # 相关音色列表：https://www.volcengine.com/docs/6561/1257544
-      # emotion: "neutral"  # 情感类型（仅部分音色支持）：neutral、happy、sad、angry、fearful、disgusted、surprised
-      # emotion_scale: 4  # 情感强度(1~5)
-    # 高级文本处理配置（additions）- 用户可自定义添加火山引擎支持的任何高级参数
+      speech_rate: 0  # Tốc độ nói (-50~100)
+      loudness_rate: 0  # Âm lượng (-50~100)
+      # Tham số giọng đa cảm xúc, lưu ý: hiện chỉ một số giọng hỗ trợ đặt cảm xúc.
+      # Danh sách giọng liên quan: https://www.volcengine.com/docs/6561/1257544
+      # emotion: "neutral"  # Loại cảm xúc (chỉ một số giọng hỗ trợ): neutral, happy, sad, angry, fearful, disgusted, surprised
+      # emotion_scale: 4  # Cường độ cảm xúc (1~5)
+    # Cấu hình xử lý văn bản nâng cao (additions) - người dùng có thể tự thêm bất kỳ tham số nâng cao nào Volcengine hỗ trợ
     additions:
       post_process:
-        pitch: 0  # 音高(-12~12)
-      # aigc_metadata: {}  # AIGC元数据配置
-      # cache_config: {}  # 缓存配置
-    # 混音控制配置（mix_speaker）- 多音色混合（仅 TTS 1.0）
-    # 混音功能主要适用于豆包语音合成模型1.0的音色，使用时需要将req_params.speaker设置为custom_mix_bigtts
+        pitch: 0  # Cao độ (-12~12)
+      # aigc_metadata: {}  # Cấu hình metadata AIGC
+      # cache_config: {}  # Cấu hình cache
+    # Cấu hình điều khiển mix (mix_speaker) - trộn nhiều giọng (chỉ TTS 1.0)
+    # Tính năng mix chủ yếu dùng cho giọng của model tổng hợp giọng nói Doubao 1.0, khi dùng cần đặt req_params.speaker thành custom_mix_bigtts
     # mix_speaker:
     #   speakers:
     #     - source_speaker: zh_male_bvlazysheep
@@ -834,71 +834,71 @@ TTS:
     #       mix_factor: 0.3
     #     - source_speaker: zh_male_ahu_conversation_wvae_bigtts
     #       mix_factor: 0.4
-    # language: "中文"  # 指定输出语种,如:中文、英语、日语、韩语等,请根据所选音色支持的语言进行设置,不填则默认为中文
-  #豆包语音合成模型2.0，支持双向流式tts（基于seed-tts-2.0资源）
+    # language: "中文"  # Chỉ định ngôn ngữ đầu ra, như: tiếng Trung, tiếng Anh, tiếng Nhật, tiếng Hàn..., hãy đặt theo ngôn ngữ giọng đã chọn hỗ trợ, không điền mặc định là tiếng Trung
+  #Model tổng hợp giọng nói Doubao 2.0, hỗ trợ TTS streaming hai chiều (dựa trên tài nguyên seed-tts-2.0)
   HuoshanDoubleStreamTTSV2:
     type: huoshan_double_stream
-    # 访问 https://console.volcengine.com/speech/service/10035 开通语音合成大模型，购买音色
-    # 在页面底部获取appid和access_token
-    # 资源ID固定为：seed-tts-2.0（豆包语音合成模型2.0）
-    # 如果是机智云，把接口地址换成wss://bytedance.gizwitsapi.com/api/v3/tts/bidirection
-    # 机智云不需要天填 appid
+    # Truy cập https://console.volcengine.com/speech/service/10035 để mở model lớn tổng hợp giọng nói, mua giọng
+    # Lấy appid và access_token ở cuối trang
+    # Resource ID cố định: seed-tts-2.0 (model tổng hợp giọng nói Doubao 2.0)
+    # Nếu dùng Gizwits, đổi địa chỉ giao diện thành wss://bytedance.gizwitsapi.com/api/v3/tts/bidirection
+    # Gizwits không cần điền appid
     ws_url: wss://openspeech.bytedance.com/api/v3/tts/bidirection
     appid: 你的火山引擎语音合成服务appid
     access_token: 你的火山引擎语音合成服务access_token
     resource_id: seed-tts-2.0
     speaker: zh_female_xiaohe_uranus_bigtts
-    # 开启WebSocket连接复用，默认复用（注意：复用后设备处于聆听状态时空闲链接会占并发数）
+    # Bật tái sử dụng kết nối WebSocket, mặc định tái sử dụng (lưu ý: sau khi tái sử dụng, kết nối rảnh khi thiết bị ở trạng thái nghe sẽ chiếm số luồng đồng thời)
     enable_ws_reuse: True
-    # 相关参数文档：https://www.volcengine.com/docs/6561/1329505
-    # 音频输出配置（audio_params）- 用户可自定义添加火山引擎支持的任何音频参数
+    # Tài liệu tham số liên quan: https://www.volcengine.com/docs/6561/1329505
+    # Cấu hình đầu ra audio (audio_params) - người dùng có thể tự thêm bất kỳ tham số audio nào Volcengine hỗ trợ
     audio_params:
-      speech_rate: 0  # 语速(-50~100)
-      loudness_rate: 0  # 音量(-50~100)
-    # 高级文本处理配置（additions）- 用户可自定义添加火山引擎支持的任何高级参数
+      speech_rate: 0  # Tốc độ nói (-50~100)
+      loudness_rate: 0  # Âm lượng (-50~100)
+    # Cấu hình xử lý văn bản nâng cao (additions) - người dùng có thể tự thêm bất kỳ tham số nâng cao nào Volcengine hỗ trợ
     additions:
       post_process:
-        pitch: 0  # 音高(-12~12)
-    # language: "中文"  # 指定输出语种,如:中文、英语、日语、韩语等,请根据所选音色支持的语言进行设置,不填则默认为中文
+        pitch: 0  # Cao độ (-12~12)
+    # language: "中文"  # Chỉ định ngôn ngữ đầu ra, như: tiếng Trung, tiếng Anh, tiếng Nhật, tiếng Hàn..., hãy đặt theo ngôn ngữ giọng đã chọn hỗ trợ, không điền mặc định là tiếng Trung
   CosyVoiceSiliconflow:
     type: siliconflow
-    # 硅基流动TTS
-    # token申请地址 https://cloud.siliconflow.cn/account/ak
+    # SiliconFlow TTS
+    # Địa chỉ đăng ký token https://cloud.siliconflow.cn/account/ak
     model: FunAudioLLM/CosyVoice2-0.5B
     voice: FunAudioLLM/CosyVoice2-0.5B:alex
     output_dir: tmp/
     access_token: 你的硅基流动API密钥
     response_format: wav
-    # language: "中文"  # 指定输出语种,如:中文、英语、日语、韩语等,请根据所选音色支持的语言进行设置,不填则默认为中文
+    # language: "中文"  # Chỉ định ngôn ngữ đầu ra, như: tiếng Trung, tiếng Anh, tiếng Nhật, tiếng Hàn..., hãy đặt theo ngôn ngữ giọng đã chọn hỗ trợ, không điền mặc định là tiếng Trung
   CozeCnTTS:
     type: cozecn
     # COZECN TTS
-    # token申请地址 https://www.coze.cn/open/oauth/pats
+    # Địa chỉ đăng ký token https://www.coze.cn/open/oauth/pats
     voice: 7426720361733046281
     output_dir: tmp/
     access_token: 你的coze web key
     response_format: wav
-    # language: "中文"  # 指定输出语种,如:中文、英语、日语、韩语等,请根据所选音色支持的语言进行设置,不填则默认为中文
-    # 以下可不用设置，使用默认设置
-    # speed: 1  # 语速：-0.5到2
-    # loudness_rate: 0  # 音量：-50到100
+    # language: "中文"  # Chỉ định ngôn ngữ đầu ra, như: tiếng Trung, tiếng Anh, tiếng Nhật, tiếng Hàn..., hãy đặt theo ngôn ngữ giọng đã chọn hỗ trợ, không điền mặc định là tiếng Trung
+    # Các mục dưới có thể không cần đặt, dùng cài đặt mặc định
+    # speed: 1  # Tốc độ nói: -0.5 đến 2
+    # loudness_rate: 0  # Âm lượng: -50 đến 100
   VolcesAiGatewayTTS:
     type: openai
-    # 火山引擎 - 边缘大模型网关
-    # 先开通服务，打开以下网址，创建网关访问密钥，搜索并勾选 Doubao-语音合成 ，开通
-    # 如果需要使用边缘大模型网关提供的 LLM，一并勾选 Doubao-pro-32k-functioncall ，另见 LLM.VolcesAiGatewayLLM 配置
+    # Volcengine - Cổng gateway model lớn biên (edge)
+    # Mở dịch vụ trước: mở URL dưới, tạo khóa truy cập gateway, tìm và tích chọn Doubao-语音合成 rồi mở
+    # Nếu cần dùng LLM do cổng gateway model lớn biên cung cấp, tích thêm Doubao-pro-32k-functioncall, xem thêm cấu hình LLM.VolcesAiGatewayLLM
     # https://console.volcengine.com/vei/aigateway/
-    # 开通后，进入这里获取密钥：https://console.volcengine.com/vei/aigateway/tokens-list
+    # Sau khi mở, vào đây để lấy khóa: https://console.volcengine.com/vei/aigateway/tokens-list
     api_key: 你的网关访问密钥
     api_url: https://ai-gateway.vei.volces.com/v1/audio/speech
     model: doubao-tts
-    # 音色列表见 https://www.volcengine.com/docs/6561/1257544
+    # Xem danh sách giọng tại https://www.volcengine.com/docs/6561/1257544
     voice: zh_male_shaonianzixin_moon_bigtts
     speed: 1
     output_dir: tmp/
-    # language: "中文"  # 指定输出语种,如:中文、英语、日语、韩语等,请根据所选音色支持的语言进行设置,不填则默认为中文
+    # language: "中文"  # Chỉ định ngôn ngữ đầu ra, như: tiếng Trung, tiếng Anh, tiếng Nhật, tiếng Hàn..., hãy đặt theo ngôn ngữ giọng đã chọn hỗ trợ, không điền mặc định là tiếng Trung
   FishSpeech:
-    # 参照教程：https://github.com/xinnan-tech/xiaozhi-esp32-server/blob/main/docs/fish-speech-integration.md
+    # Tham khảo hướng dẫn: https://github.com/xinnan-tech/xiaozhi-esp32-server/blob/main/docs/fish-speech-integration.md
     type: fishspeech
     output_dir: tmp/
     response_format: wav
@@ -918,10 +918,10 @@ TTS:
     rate: 44100
     api_key: "你的api_key"
     api_url: "http://127.0.0.1:8080/v1/tts"
-    # language: "中文"  # 指定输出语种,如:中文、英语、日语、韩语等,请根据所选音色支持的语言进行设置,不填则默认为中文
+    # language: "中文"  # Chỉ định ngôn ngữ đầu ra, như: tiếng Trung, tiếng Anh, tiếng Nhật, tiếng Hàn..., hãy đặt theo ngôn ngữ giọng đã chọn hỗ trợ, không điền mặc định là tiếng Trung
   GPT_SOVITS_V2:
-    # 定义TTS API类型
-    #启动tts方法：
+    # Định nghĩa loại TTS API
+    #Cách khởi động TTS:
     #python api_v2.py -a 127.0.0.1 -p 9880 -c GPT_SoVITS/configs/demo.yaml
     type: gpt_sovits_v2
     url: "http://127.0.0.1:9880/tts"
@@ -944,10 +944,10 @@ TTS:
     parallel_infer: true
     repetition_penalty: 1.35
     aux_ref_audio_paths: []
-    # language: "中文"  # 指定输出语种,如:中文、英语、日语、韩语等,请根据所选音色支持的语言进行设置,不填则默认为中文
+    # language: "中文"  # Chỉ định ngôn ngữ đầu ra, như: tiếng Trung, tiếng Anh, tiếng Nhật, tiếng Hàn..., hãy đặt theo ngôn ngữ giọng đã chọn hỗ trợ, không điền mặc định là tiếng Trung
   GPT_SOVITS_V3:
-    # 定义TTS API类型 GPT-SoVITS-v3lora-20250228
-    #启动tts方法：
+    # Định nghĩa loại TTS API GPT-SoVITS-v3lora-20250228
+    #Cách khởi động TTS:
     #python api.py
     type: gpt_sovits_v3
     url: "http://127.0.0.1:9880"
@@ -964,16 +964,16 @@ TTS:
     inp_refs: []
     sample_steps: 32
     if_sr: false
-    # language: "中文"  # 指定输出语种,如:中文、英语、日语、韩语等,请根据所选音色支持的语言进行设置,不填则默认为中文
+    # language: "中文"  # Chỉ định ngôn ngữ đầu ra, như: tiếng Trung, tiếng Anh, tiếng Nhật, tiếng Hàn..., hãy đặt theo ngôn ngữ giọng đã chọn hỗ trợ, không điền mặc định là tiếng Trung
   MinimaxTTSHTTPStream:
-  # Minimax流式语音合成服务
+  # Dịch vụ tổng hợp giọng nói streaming Minimax
     type: minimax_httpstream
     output_dir: tmp/
     group_id: 你的minimax平台groupID
     api_key: 你的minimax平台接口密钥
     model: "speech-01-turbo"
     voice_id: "female-shaonv"
-    # 以下可不用设置，使用默认设置
+    # Các mục dưới có thể không cần đặt, dùng cài đặt mặc định
     # voice_setting:
     #     voice_id: "male-qn-qingse"
     #     speed: 1
@@ -996,13 +996,13 @@ TTS:
     #     voice_id: female-shaonv
     #     weight: 1
     # language_boost: auto
-    # language: "中文"  # 指定输出语种,如:中文、英语、日语、韩语等,请根据所选音色支持的语言进行设置,不填则默认为中文
+    # language: "中文"  # Chỉ định ngôn ngữ đầu ra, như: tiếng Trung, tiếng Anh, tiếng Nhật, tiếng Hàn..., hãy đặt theo ngôn ngữ giọng đã chọn hỗ trợ, không điền mặc định là tiếng Trung
   AliyunTTS:
-    # 阿里云智能语音交互服务，需要先在阿里云平台开通服务，然后获取验证信息
-    # 平台地址：https://nls-portal.console.aliyun.com/
-    # appkey地址：https://nls-portal.console.aliyun.com/applist
-    # token地址：https://nls-portal.console.aliyun.com/overview
-    # 定义TTS API类型
+    # Dịch vụ tương tác giọng nói thông minh Alibaba Cloud, cần mở dịch vụ trên nền tảng Alibaba Cloud trước rồi lấy thông tin xác thực
+    # Địa chỉ nền tảng: https://nls-portal.console.aliyun.com/
+    # Địa chỉ appkey: https://nls-portal.console.aliyun.com/applist
+    # Địa chỉ token: https://nls-portal.console.aliyun.com/overview
+    # Định nghĩa loại TTS API
     type: aliyun
     output_dir: tmp/
     appkey: 你的阿里云智能语音交互服务项目Appkey
@@ -1011,21 +1011,21 @@ TTS:
     access_key_id: 你的阿里云账号access_key_id
     access_key_secret: 你的阿里云账号access_key_secret
 
-    # 以下可不用设置，使用默认设置
+    # Các mục dưới có thể không cần đặt, dùng cài đặt mặc định
     # format: wav
     # volume: 50
     # speech_rate: 0
     # pitch_rate: 0
-    # language: "中文"  # 指定输出语种,如:中文、英语、日语、韩语等,请根据所选音色支持的语言进行设置,不填则默认为中文
+    # language: "中文"  # Chỉ định ngôn ngữ đầu ra, như: tiếng Trung, tiếng Anh, tiếng Nhật, tiếng Hàn..., hãy đặt theo ngôn ngữ giọng đã chọn hỗ trợ, không điền mặc định là tiếng Trung
   AliyunStreamTTS:
-    # 阿里云CosyVoice大模型流式文本语音合成
-    # 采用FlowingSpeechSynthesizer接口，支持更低延迟和更自然的语音质量
-    # 流式文本语音合成仅提供商用版，不支持试用，详情请参见试用版和商用版。要使用该功能，请开通商用版。
-    # 支持龙系列专用音色：longxiaochun、longyu、longchen等
-    # 平台地址：https://nls-portal.console.aliyun.com/
-    # appkey地址：https://nls-portal.console.aliyun.com/applist
-    # token地址：https://nls-portal.console.aliyun.com/overview
-    # 使用三阶段流式交互：StartSynthesis -> RunSynthesis -> StopSynthesis
+    # Tổng hợp giọng nói streaming văn bản model lớn CosyVoice của Alibaba Cloud
+    # Dùng giao diện FlowingSpeechSynthesizer, hỗ trợ độ trễ thấp hơn và chất lượng giọng tự nhiên hơn
+    # Tổng hợp giọng nói streaming văn bản chỉ có bản thương mại, không hỗ trợ dùng thử, chi tiết xem bản dùng thử và bản thương mại. Muốn dùng tính năng này hãy mở bản thương mại.
+    # Hỗ trợ các giọng chuyên dụng dòng "long": longxiaochun, longyu, longchen...
+    # Địa chỉ nền tảng: https://nls-portal.console.aliyun.com/
+    # Địa chỉ appkey: https://nls-portal.console.aliyun.com/applist
+    # Địa chỉ token: https://nls-portal.console.aliyun.com/overview
+    # Dùng tương tác streaming 3 giai đoạn: StartSynthesis -> RunSynthesis -> StopSynthesis
     type: aliyun_stream
     output_dir: tmp/
     appkey: 你的阿里云智能语音交互服务项目Appkey
@@ -1033,18 +1033,18 @@ TTS:
     voice: longxiaochun
     access_key_id: 你的阿里云账号access_key_id
     access_key_secret: 你的阿里云账号access_key_secret
-    # 截至2025年7月21日大模型音色只有北京节点采用，其他节点暂不支持
+    # Tính đến 21/07/2025, giọng model lớn chỉ dùng node Bắc Kinh, các node khác tạm chưa hỗ trợ
     host: nls-gateway-cn-beijing.aliyuncs.com
-    # 以下可不用设置，使用默认设置
-    # format: pcm  # 音频格式：pcm、wav、mp3
-    # volume: 50  # 音量：0-100
-    # speech_rate: 0  # 语速：-500到500
-    # pitch_rate: 0  # 语调：-500到500
-    # language: "中文"  # 指定输出语种,如:中文、英语、日语、韩语等,请根据所选音色支持的语言进行设置,不填则默认为中文
+    # Các mục dưới có thể không cần đặt, dùng cài đặt mặc định
+    # format: pcm  # Định dạng audio: pcm, wav, mp3
+    # volume: 50  # Âm lượng: 0-100
+    # speech_rate: 0  # Tốc độ nói: -500 đến 500
+    # pitch_rate: 0  # Ngữ điệu: -500 đến 500
+    # language: "中文"  # Chỉ định ngôn ngữ đầu ra, như: tiếng Trung, tiếng Anh, tiếng Nhật, tiếng Hàn..., hãy đặt theo ngôn ngữ giọng đã chọn hỗ trợ, không điền mặc định là tiếng Trung
   TencentTTS:
-    # 腾讯云智能语音交互服务，需要先在腾讯云平台开通服务
-    # appid、secret_id、secret_key申请地址：https://console.cloud.tencent.com/cam/capi
-    # 免费领取资源：https://console.cloud.tencent.com/tts/resourcebundle
+    # Dịch vụ tương tác giọng nói thông minh Tencent Cloud, cần mở dịch vụ trên nền tảng Tencent Cloud trước
+    # Địa chỉ đăng ký appid, secret_id, secret_key: https://console.cloud.tencent.com/cam/capi
+    # Nhận tài nguyên miễn phí: https://console.cloud.tencent.com/tts/resourcebundle
     type: tencent
     output_dir: tmp/
     appid: 你的腾讯云AppId
@@ -1052,51 +1052,51 @@ TTS:
     secret_key: 你的腾讯云SecretKey
     region: ap-guangzhou
     voice: 101001
-    # language: "中文"  # 指定输出语种,如:中文、英语、日语、韩语等,请根据所选音色支持的语言进行设置,不填则默认为中文
-    # 以下可不用设置，使用默认设置
-    # format: wav  # 音频格式：pcm、wav、mp3
-    # volume: 0  # 音量：-10到10
-    # speech_rate: 0  # 语速：-2到6
+    # language: "中文"  # Chỉ định ngôn ngữ đầu ra, như: tiếng Trung, tiếng Anh, tiếng Nhật, tiếng Hàn..., hãy đặt theo ngôn ngữ giọng đã chọn hỗ trợ, không điền mặc định là tiếng Trung
+    # Các mục dưới có thể không cần đặt, dùng cài đặt mặc định
+    # format: wav  # Định dạng audio: pcm, wav, mp3
+    # volume: 0  # Âm lượng: -10 đến 10
+    # speech_rate: 0  # Tốc độ nói: -2 đến 6
   TTS302AI:
-    # 302AI语音合成服务，需要先在302平台创建账户充值，并获取密钥信息
-    # 添加 302.ai TTS 配置
-    # token申请地址：https://dash.302.ai/
-    # 获取api_keyn路径：https://dash.302.ai/apis/list
-    # 价格，$35/百万字符。火山原版¥450元/百万字符
+    # Dịch vụ tổng hợp giọng nói 302AI, cần tạo tài khoản và nạp tiền trên nền tảng 302 trước, rồi lấy thông tin khóa
+    # Thêm cấu hình 302.ai TTS
+    # Địa chỉ đăng ký token: https://dash.302.ai/
+    # Đường dẫn lấy api_key: https://dash.302.ai/apis/list
+    # Giá: $35/triệu ký tự. Bản gốc Volcengine ¥450/triệu ký tự
     type: doubao
     api_url: https://api.302ai.cn/doubao/tts_hd
     authorization: "Bearer "
-    # 湾湾小何音色
+    # Giọng 湾湾小何 (giọng Đài Loan)
     voice: "zh_female_wanwanxiaohe_moon_bigtts"
     output_dir: tmp/
     access_token: "你的302API密钥"
-    # language: "中文"  # 指定输出语种,如:中文、英语、日语、韩语等,请根据所选音色支持的语言进行设置,不填则默认为中文
+    # language: "中文"  # Chỉ định ngôn ngữ đầu ra, như: tiếng Trung, tiếng Anh, tiếng Nhật, tiếng Hàn..., hãy đặt theo ngôn ngữ giọng đã chọn hỗ trợ, không điền mặc định là tiếng Trung
   OpenAITTS:
-    # openai官方文本转语音服务，可支持全球大多数语种
+    # Dịch vụ text-to-speech chính thức của OpenAI, hỗ trợ hầu hết ngôn ngữ trên thế giới
     type: openai
-    # 你可以在这里获取到 api key
+    # Bạn có thể lấy api key tại đây
     # https://platform.openai.com/api-keys
     api_key: 你的openai api key
-    # 国内需要使用代理
+    # Trong Trung Quốc cần dùng proxy
     api_url: https://api.openai.com/v1/audio/speech
-    # 可选tts-1或tts-1-hd，tts-1速度更快tts-1-hd质量更好
+    # Có thể chọn tts-1 hoặc tts-1-hd, tts-1 nhanh hơn còn tts-1-hd chất lượng tốt hơn
     model: tts-1
-    # 演讲者，可选alloy, echo, fable, onyx, nova, shimmer
+    # Người nói, có thể chọn alloy, echo, fable, onyx, nova, shimmer
     voice: onyx
-    # 语速范围0.25-4.0
+    # Phạm vi tốc độ nói 0.25-4.0
     speed: 1
     output_dir: tmp/
-    # language: "中文"  # 指定输出语种,如:中文、英语、日语、韩语等,请根据所选音色支持的语言进行设置,不填则默认为中文
+    # language: "中文"  # Chỉ định ngôn ngữ đầu ra, như: tiếng Trung, tiếng Anh, tiếng Nhật, tiếng Hàn..., hãy đặt theo ngôn ngữ giọng đã chọn hỗ trợ, không điền mặc định là tiếng Trung
   CustomTTS:
-    # 自定义的TTS接口服务，请求参数可自定义，可接入众多TTS服务
-    # 以本地部署的KokoroTTS为例
-    # 如果只有cpu运行：docker run -p 8880:8880 ghcr.io/remsky/kokoro-fastapi-cpu:latest
-    # 如果只有gpu运行：docker run --gpus all -p 8880:8880 ghcr.io/remsky/kokoro-fastapi-gpu:latest
-    # 要求接口使用POST方式请求，并返回音频文件
+    # Dịch vụ giao diện TTS tùy chỉnh, tham số request có thể tùy chỉnh, có thể tích hợp nhiều dịch vụ TTS
+    # Lấy KokoroTTS triển khai local làm ví dụ
+    # Nếu chỉ chạy CPU: docker run -p 8880:8880 ghcr.io/remsky/kokoro-fastapi-cpu:latest
+    # Nếu chỉ chạy GPU: docker run --gpus all -p 8880:8880 ghcr.io/remsky/kokoro-fastapi-gpu:latest
+    # Yêu cầu giao diện dùng phương thức POST để request và trả về file audio
     type: custom
     method: POST
     url: "http://127.0.0.1:8880/v1/audio/speech"
-    params: # 自定义请求参数
+    params: # Tham số request tùy chỉnh
       input: "{prompt_text}"
       response_format: "mp3"
       download_format: "mp3"
@@ -1105,57 +1105,57 @@ TTS:
       return_download_link: true
       speed: 1
       stream: false
-    headers: # 自定义请求头
+    headers: # Header request tùy chỉnh
       # Authorization: Bearer xxxx
-    format: mp3 # 接口返回的音频格式
+    format: mp3 # Định dạng audio giao diện trả về
     output_dir: tmp/
-    # language: "中文"  # 指定输出语种,如:中文、英语、日语、韩语等,请根据所选音色支持的语言进行设置,不填则默认为中文
+    # language: "中文"  # Chỉ định ngôn ngữ đầu ra, như: tiếng Trung, tiếng Anh, tiếng Nhật, tiếng Hàn..., hãy đặt theo ngôn ngữ giọng đã chọn hỗ trợ, không điền mặc định là tiếng Trung
   PaddleSpeechTTS:
-    #百度飞浆 PaddleSpeech 支持本地离线部署 支持模型训练
-    #框架地址 https://www.paddlepaddle.org.cn/
-    #项目地址 https://github.com/PaddlePaddle/PaddleSpeech
+    #PaddleSpeech của Baidu Paddle hỗ trợ triển khai offline local, hỗ trợ huấn luyện model
+    #Địa chỉ framework https://www.paddlepaddle.org.cn/
+    #Địa chỉ dự án https://github.com/PaddlePaddle/PaddleSpeech
     #SpeechServerDemo https://github.com/PaddlePaddle/PaddleSpeech/tree/develop/demos/speech_server
-    #流式传输请参考 https://github.com/PaddlePaddle/PaddleSpeech/wiki/PaddleSpeech-Server-WebSocket-API
+    #Truyền streaming tham khảo https://github.com/PaddlePaddle/PaddleSpeech/wiki/PaddleSpeech-Server-WebSocket-API
     type: paddle_speech
     protocol: websocket # protocol choices = ['websocket', 'http']
-    url: ws://127.0.0.1:8092/paddlespeech/tts/streaming  # TTS 服务的 URL 地址，指向本地服务器 [websocket默认ws://127.0.0.1:8092/paddlespeech/tts/streaming，http默认http://127.0.0.1:8090/paddlespeech/tts]
-    spk_id: 0  # 发音人 ID，0 通常表示默认的发音人
-    speed: 1.0  # 语速，1.0 表示正常语速，>1 表示加快，<1 表示减慢
-    volume: 1.0  # 音量，1.0 表示正常音量，>1 表示增大，<1 表示减小
-    save_path:   # 保存路径
-    # language: "中文"  # 指定输出语种,如:中文、英语、日语、韩语等,请根据所选音色支持的语言进行设置,不填则默认为中文
+    url: ws://127.0.0.1:8092/paddlespeech/tts/streaming  # Địa chỉ URL của dịch vụ TTS, trỏ tới server local [mặc định websocket ws://127.0.0.1:8092/paddlespeech/tts/streaming, mặc định http http://127.0.0.1:8090/paddlespeech/tts]
+    spk_id: 0  # ID người nói, 0 thường là người nói mặc định
+    speed: 1.0  # Tốc độ nói, 1.0 là tốc độ bình thường, >1 là nhanh hơn, <1 là chậm hơn
+    volume: 1.0  # Âm lượng, 1.0 là âm lượng bình thường, >1 là tăng, <1 là giảm
+    save_path:   # Đường dẫn lưu
+    # language: "中文"  # Chỉ định ngôn ngữ đầu ra, như: tiếng Trung, tiếng Anh, tiếng Nhật, tiếng Hàn..., hãy đặt theo ngôn ngữ giọng đã chọn hỗ trợ, không điền mặc định là tiếng Trung
   IndexStreamTTS:
-    # 基于Index-TTS-vLLM项目的TTS接口服务
-    # 参照教程：https://github.com/Ksuriuri/index-tts-vllm/blob/master/README.md
+    # Dịch vụ giao diện TTS dựa trên dự án Index-TTS-vLLM
+    # Tham khảo hướng dẫn: https://github.com/Ksuriuri/index-tts-vllm/blob/master/README.md
     type: index_stream
     api_url: http://127.0.0.1:11996/tts
     audio_format: "pcm"
-    # 默认音色，如需其他音色可到项目assets文件夹下注册
+    # Giọng mặc định, cần giọng khác thì đăng ký trong thư mục assets của dự án
     voice: "jay_klee"
     output_dir: tmp/
-    # language: "中文"  # 指定输出语种,如:中文、英语、日语、韩语等,请根据所选音色支持的语言进行设置,不填则默认为中文
+    # language: "中文"  # Chỉ định ngôn ngữ đầu ra, như: tiếng Trung, tiếng Anh, tiếng Nhật, tiếng Hàn..., hãy đặt theo ngôn ngữ giọng đã chọn hỗ trợ, không điền mặc định là tiếng Trung
   AliBLTTS:
-    # 阿里百炼CosyVoice大模型流式文本语音合成
-    # 可在这里找到你的 api_key https://bailian.console.aliyun.com/?apiKey=1#/api-key
-    # cosyvoice-v3和部分音色需要申请开通
+    # Tổng hợp giọng nói streaming văn bản model lớn CosyVoice của Alibaba Bailian
+    # Tìm api_key của bạn tại đây https://bailian.console.aliyun.com/?apiKey=1#/api-key
+    # cosyvoice-v3 và một số giọng cần đăng ký mở
     type: alibl_stream
     api_key: 你的api_key
-    # 默认兼容旧地址；业务空间请替换为 wss://<WorkspaceId>.cn-beijing.maas.aliyuncs.com/api-ws/v1/inference
+    # Mặc định tương thích địa chỉ cũ; workspace nghiệp vụ hãy thay bằng wss://<WorkspaceId>.cn-beijing.maas.aliyuncs.com/api-ws/v1/inference
     ws_url: wss://dashscope.aliyuncs.com/api-ws/v1/inference/
     model: "cosyvoice-v2"
     voice: "longcheng_v2"
     output_dir: tmp/
-    # 以下可不用设置，使用默认设置
-    # format: pcm  # 音频格式：pcm、wav、mp3、opus
-    # volume: 50  # 音量：0-100
-    # rate: 1  # 语速：0.5~2
-    # pitch: 1  # 语调：0.5~2
-    # language: "中文"  # 指定输出语种,如:中文、英语、日语、韩语等,请根据所选音色支持的语言进行设置,不填则默认为中文
+    # Các mục dưới có thể không cần đặt, dùng cài đặt mặc định
+    # format: pcm  # Định dạng audio: pcm, wav, mp3, opus
+    # volume: 50  # Âm lượng: 0-100
+    # rate: 1  # Tốc độ nói: 0.5~2
+    # pitch: 1  # Ngữ điệu: 0.5~2
+    # language: "中文"  # Chỉ định ngôn ngữ đầu ra, như: tiếng Trung, tiếng Anh, tiếng Nhật, tiếng Hàn..., hãy đặt theo ngôn ngữ giọng đã chọn hỗ trợ, không điền mặc định là tiếng Trung
   XunFeiTTS:
-    # 讯飞TTS服务 官方网站：https://www.xfyun.cn/
-    # 登录讯飞语音技术平台 https://console.xfyun.cn/app/myapp 创建相关应用
-    # 选择需要的服务获取api相关配置 https://console.xfyun.cn/services/uts
-    # 为需要使用的应用(APPID)购买相关服务 例如：超拟人合成 https://console.xfyun.cn/services/uts
+    # Dịch vụ iFlytek TTS, website chính thức: https://www.xfyun.cn/
+    # Đăng nhập nền tảng công nghệ giọng nói iFlytek https://console.xfyun.cn/app/myapp để tạo ứng dụng liên quan
+    # Chọn dịch vụ cần thiết để lấy cấu hình api liên quan https://console.xfyun.cn/services/uts
+    # Mua dịch vụ liên quan cho ứng dụng (APPID) cần dùng, ví dụ: tổng hợp siêu chân thực https://console.xfyun.cn/services/uts
     type: xunfei_stream
     api_url: wss://cbm01.cn-huabei-1.xf-yun.com/v1/private/mcd9m97e6
     app_id: 你的app_id
@@ -1163,13 +1163,13 @@ TTS:
     api_key: 你的api_key
     voice: x5_lingxiaoxuan_flow
     output_dir: tmp/
-    # 以下可不用设置，使用默认设置，注意V5音色不支持口语化配置
-    # oral_level: mid  # 口语化等级：high, mid, low
-    # spark_assist: 1  # 是否通过大模型进行口语化 开启:1, 关闭:0
-    # stop_split: 0  # 关闭服务端拆句 不关闭：0，关闭：1
-    # remain: 0  # 是否保留原书面语的样子	保留:1, 不保留:0
-    # format: raw  # 音频格式：raw(PCM), lame(MP3), speex, opus, opus-wb, opus-swb, speex-wb
-    # volume: 50  # 音量：0-100
-    # speed: 50  # 语速：0-100
-    # pitch: 50  # 语调：0-100
-    # language: "中文"  # 指定输出语种,如:中文、英语、日语、韩语等,请根据所选音色支持的语言进行设置,不填则默认为中文
+    # Các mục dưới có thể không cần đặt, dùng cài đặt mặc định, lưu ý giọng V5 không hỗ trợ cấu hình khẩu ngữ hóa
+    # oral_level: mid  # Mức độ khẩu ngữ hóa: high, mid, low
+    # spark_assist: 1  # Có khẩu ngữ hóa qua model lớn hay không. Bật:1, tắt:0
+    # stop_split: 0  # Tắt tách câu phía server. Không tắt: 0, tắt: 1
+    # remain: 0  # Có giữ nguyên văn bản viết gốc hay không\tGiữ:1, không giữ:0
+    # format: raw  # Định dạng audio: raw(PCM), lame(MP3), speex, opus, opus-wb, opus-swb, speex-wb
+    # volume: 50  # Âm lượng: 0-100
+    # speed: 50  # Tốc độ nói: 0-100
+    # pitch: 50  # Ngữ điệu: 0-100
+    # language: "中文"  # Chỉ định ngôn ngữ đầu ra, như: tiếng Trung, tiếng Anh, tiếng Nhật, tiếng Hàn..., hãy đặt theo ngôn ngữ giọng đã chọn hỗ trợ, không điền mặc định là tiếng Trung

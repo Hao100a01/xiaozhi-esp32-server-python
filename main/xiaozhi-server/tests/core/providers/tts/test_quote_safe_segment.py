@@ -4,8 +4,10 @@ import pytest
 from core.providers.tts.base import TTSProviderBase
 
 
-# 最小 stub：仅需满足抽象方法实例化要求；object.__new__ 会绕过
-# abstractmethod 检查，若基类新增抽象方法这里不会自动报错，属预期（测试不调用）
+# Stub tối thiểu: chỉ cần đáp ứng yêu cầu khởi tạo của abstract method;
+# object.__new__ sẽ bỏ qua kiểm tra abstractmethod, nếu base class thêm
+# abstract method mới thì chỗ này sẽ không tự báo lỗi — đúng như dự kiến
+# (test không gọi tới)
 class _TTS(TTSProviderBase):
     async def text_to_speak(self, text, output_file):
         return None
@@ -58,36 +60,37 @@ def test_text_without_quotes_is_split_as_before(step):
 
 @pytest.mark.parametrize("step", [1, 4])
 def test_ascii_quote_at_stream_end_stays_whole(step):
-    # 旧逻辑在 ！ 处切开，把孤立的 " 留给下一段首；现在等待引号闭合，整句一次输出
+    # Logic cũ cắt ở dấu ！, bỏ dấu " lẻ lại cho đầu đoạn sau; giờ đợi ngoặc đóng rồi xuất cả câu một lần
     assert _segments('She said, "Hi!"', step) == ['She said, "Hi!"']
 
 
-_LQ, _RQ = "\u00ab", "\u00bb"        # « » 法/俄语书名号式引号
-_GOPEN, _GCLOSE = "\u201e", "\u201c"  # „ “ 德语低引号
+_LQ, _RQ = "\u00ab", "\u00bb"        # « » dấu ngoặc kép kiểu tên sách của tiếng Pháp/Nga
+_GOPEN, _GCLOSE = "\u201e", "\u201c"  # „ “ dấu ngoặc kép thấp kiểu Đức
 
 
 @pytest.mark.parametrize("step", [1, 4])
 def test_guillemets_are_not_split(step):
-    # ！ 位于 «» 内，须等右书名号闭合后在句尾标点处切分
+    # Dấu ！ nằm trong «», phải đợi ngoặc phải đóng xong mới cắt ở dấu câu cuối câu
     text = "Il a dit " + _LQ + "Bonjour ! " + _RQ + " puis est parti."
     assert _segments(text, step) == [text]
 
 
 @pytest.mark.parametrize("step", [1, 4])
 def test_german_low9_quotes_stay_whole(step):
-    # „…“ 的闭合符 “ 是中文引号的开引号：“ 总被 (“”, ””) 对计为 opener，
-    # 故 „…“ 闭合后依然判不平衡，无论后续有无句末标点（实测），
-    # 德语只能整句 stop flush —— 这是字符冲突下的保守预期，非缺陷
+    # Dấu đóng của „…“ (“) trùng với dấu mở ngoặc kép của tiếng Trung: “ luôn bị
+    # cặp (“”, ””) tính là opener, nên sau khi „…“ đóng vẫn bị xem là mất cân bằng,
+    # bất kể phía sau có dấu câu cuối câu hay không (thực nghiệm); tiếng Đức chỉ có
+    # thể stop flush cả câu —— đây là kỳ vọng thận trọng khi xung đột ký tự, không phải lỗi
     text = "Er sagte " + _GOPEN + "Hallo!" + _GCLOSE + " und ging."
     assert _segments(text, step) == [text]
-    # 闭合 + 中文句号同样整句 flush：正路径因 “ 双重语义不可达
+    # Đóng ngoặc + dấu chấm tiếng Trung cũng flush cả câu: đường chính tắc không tới được vì “ mang nghĩa kép
     text2 = "Er sagte " + _GOPEN + "Hallo!" + _GCLOSE + "。Dann geht er。"
     assert _segments(text2, step) == [text2]
 
 
 @pytest.mark.parametrize("step", [1, 4])
 def test_unterminated_quote_flushes_on_stop(step):
-    # 单个引号符号（未闭合）不卡死：流式期间等待，stop 时整段 flush
+    # Một dấu ngoặc đơn lẻ (chưa đóng) không bị kẹt: trong khi stream thì chờ, lúc stop thì flush cả đoạn
     assert _segments('"Hi', step) == ['"Hi']
     assert _segments("「わぁ", step) == ["「わぁ"]
 
@@ -97,8 +100,8 @@ _LB, _RB = "\u3010", "\u3011"  # 【】
 
 @pytest.mark.parametrize("step", [1, 4])
 def test_brackets_with_punct_inside_are_not_split(step):
-    # ！位于【】内不得切开（切开时第一段只到“他说【重要”），
-    # 应等右括号闭合后在句尾标点切分
+    # Dấu ！ nằm trong 【】 không được cắt (nếu cắt, đoạn đầu chỉ tới “他说【重要”),
+    # phải đợi ngoặc phải đóng xong mới cắt ở dấu câu cuối câu
     assert _segments("他说" + _LB + "重要！步骤" + _RB + "。然后走了。", step) == [
         "他说" + _LB + "重要！步骤",
         "然后走了",
@@ -106,13 +109,13 @@ def test_brackets_with_punct_inside_are_not_split(step):
 
 
 def test_nested_mixed_quotes_stay_whole():
-    # 嵌套引号逐对独立计数，互不干扰
+    # Ngoặc lồng nhau được đếm độc lập theo từng cặp, không ảnh hưởng nhau
     assert _segments("“他说『好』了。”然后离开。", 1) == ["他说『好』了。”然后离开"]
 
 
 def test_apostrophes_do_not_block_splitting():
-    # 单引号有撇号歧义（don't），不得纳入平衡检查导致整句延迟
-    # 注：flush 段（stop 时剩余文本）原样输出，不做 strip
+    # Dấu nháy đơn dễ nhầm với dấu apostrophe (don't), không được đưa vào kiểm tra cân bằng khiến cả câu bị trễ
+    # Ghi chú: đoạn flush (text còn lại lúc stop) xuất nguyên văn, không strip
     assert _segments("don't! It's fine.", 1) == ["don't", " It's fine."]
 
 

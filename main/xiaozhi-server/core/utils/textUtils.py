@@ -40,13 +40,13 @@ EMOJI_RANGES = [
 
 
 def get_string_no_punctuation_or_emoji(s):
-    """去除字符串首尾的空格、标点符号和表情符号"""
+    """Loại bỏ khoảng trắng, dấu câu và emoji ở đầu/cuối chuỗi"""
     chars = list(s)
-    # 处理开头的字符
+    # Xử lý ký tự ở đầu
     start = 0
     while start < len(chars) and is_punctuation_or_emoji(chars[start]):
         start += 1
-    # 处理结尾的字符
+    # Xử lý ký tự ở cuối
     end = len(chars) - 1
     while end >= start and is_punctuation_or_emoji(chars[end]):
         end -= 1
@@ -54,27 +54,27 @@ def get_string_no_punctuation_or_emoji(s):
 
 
 def is_punctuation_or_emoji(char):
-    """检查字符是否为空格、指定标点或表情符号"""
-    # 定义需要去除的中英文标点（包括全角/半角）
+    """Kiểm tra ký tự có phải khoảng trắng, dấu câu chỉ định hoặc emoji"""
+    # Định nghĩa dấu câu Trung/Anh cần loại bỏ (gồm full-width/half-width)
     punctuation_set = {
         "，",
-        ",",  # 中文逗号 + 英文逗号
+        ",",  # Dấu phẩy tiếng Trung + dấu phẩy tiếng Anh
         "。",
-        ".",  # 中文句号 + 英文句号
+        ".",  # Dấu chấm tiếng Trung + dấu chấm tiếng Anh
         "！",
-        "!",  # 中文感叹号 + 英文感叹号
+        "!",  # Dấu chấm than tiếng Trung + dấu chấm than tiếng Anh
         "“",
         "”",
-        '"',  # 中文双引号 + 英文引号
+        '"',  # Dấu ngoặc kép tiếng Trung + dấu ngoặc kép tiếng Anh
         "：",
-        ":",  # 中文冒号 + 英文冒号
+        ":",  # Dấu hai chấm tiếng Trung + dấu hai chấm tiếng Anh
         "-",
-        "－",  # 英文连字符 + 中文全角横线
-        "、",  # 中文顿号
+        "－",  # Dấu gạch nối tiếng Anh + dấu gạch ngang full-width tiếng Trung
+        "、",  # Dấu chấm phẩy liệt kê tiếng Trung (、)
         "[",
-        "]",  # 方括号
+        "]",  # Ngoặc vuông
         "【",
-        "】",  # 中文方括号
+        "】",  # Ngoặc vuông tiếng Trung
     }
     if char.isspace() or char in punctuation_set:
         return True
@@ -82,7 +82,7 @@ def is_punctuation_or_emoji(char):
 
 
 async def get_emotion(conn: "ConnectionHandler", text):
-    """获取文本内的情绪消息"""
+    """Lấy message cảm xúc trong văn bản"""
     emoji = "🙂"
     emotion = "happy"
     for char in text:
@@ -102,16 +102,16 @@ async def get_emotion(conn: "ConnectionHandler", text):
             )
         )
     except Exception as e:
-        conn.logger.bind(tag=TAG).warning(f"发送情绪表情失败，错误:{e}")
+        conn.logger.bind(tag=TAG).warning(f"Gửi emoji cảm xúc thất bại, lỗi:{e}")
     return
 
 
 def is_emoji(char):
-    """检查字符是否为emoji表情"""
+    """Kiểm tra ký tự có phải emoji"""
     code_point = ord(char)
     return any(start <= code_point <= end for start, end in EMOJI_RANGES)
 
 
 def check_emoji(text):
-    """去除文本中的所有emoji表情"""
+    """Loại bỏ mọi emoji trong văn bản"""
     return "".join(char for char in text if not is_emoji(char) and char != "\n")

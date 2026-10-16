@@ -12,7 +12,7 @@ EMOTION_EMOJI_MAP = {
     "FEARFUL": "😰",
     "DISGUSTED": "🤢",
     "SURPRISED": "😲",
-    "EMO_UNKNOWN": "😶",  # 未知情绪默认用中性表情
+    "EMO_UNKNOWN": "😶",  # Cảm xúc không xác định mặc định dùng biểu cảm trung tính
 }
 # EVENT_EMOJI_MAP = {
 #     "<|BGM|>": "🎼",
@@ -27,32 +27,32 @@ EMOTION_EMOJI_MAP = {
 
 def lang_tag_filter(text: str) -> dict:
     """
-    解析 FunASR 识别结果，按顺序提取标签和纯文本内容
+    Phân tích kết quả nhận dạng FunASR, trích xuất nhãn và nội dung văn bản thuần theo thứ tự
 
     Args:
-        text: ASR 识别的原始文本，可能包含多种标签
+        text: Văn bản gốc do ASR nhận dạng, có thể chứa nhiều loại nhãn
 
     Returns:
-        dict: {"language": "zh", "emotion": "SAD", "emoji": "😔", "content": "你好"} 如果有标签，
-              {"content": "纯文本"} 如果没有标签
+        dict: {"language": "zh", "emotion": "SAD", "emoji": "😔", "content": "Xin chào"} nếu có nhãn,
+              {"content": "Văn bản thuần"} nếu không có nhãn
 
     Examples:
-        FunASR 输出格式：<|语种|><|情绪|><|事件|><|其他选项|>原文
-        >>> lang_tag_filter("<|zh|><|SAD|><|Speech|><|withitn|>你好啊，测试测试。")
-        {"language": "zh", "emotion": "SAD", "emoji": "😔", "content": "你好啊，测试测试。"}
+        Định dạng đầu ra FunASR: <|ngôn ngữ|><|cảm xúc|><|sự kiện|><|tuỳ chọn khác|>văn bản gốc
+        >>> lang_tag_filter("<|zh|><|SAD|><|Speech|><|withitn|>Xin chào, kiểm tra kiểm tra.")
+        {"language": "zh", "emotion": "SAD", "emoji": "😔", "content": "Xin chào, kiểm tra kiểm tra."}
         >>> lang_tag_filter("<|en|><|HAPPY|><|Speech|><|withitn|>Hello hello.")
         {"language": "en", "emotion": "HAPPY", "emoji": "🙂", "content": "Hello hello."}
         >>> lang_tag_filter("plain text")
         {"content": "plain text"}
     """
-    # 提取所有标签（按顺序）
+    # Trích xuất mọi nhãn (theo thứ tự)
     tag_pattern = r"<\|([^|]+)\|>"
     all_tags = re.findall(tag_pattern, text)
 
-    # 移除所有 <|...|> 格式的标签，获取纯文本
+    # Xoá mọi nhãn định dạng <|...|>, lấy văn bản thuần
     clean_text = re.sub(tag_pattern, "", text).strip()
-    # SenseVoice 对日语等偶尔按词输出空格（如「今日 の こと を」），去掉中日文字符之间的空格；
-    # 韩文、英文的词间空格不受影响
+    # SenseVoice thỉnh thoảng xuất dấu cách theo từ với tiếng Nhật (như「今日 の こと を」), xoá dấu cách giữa các ký tự Trung/Nhật;
+    # Dấu cách giữa các từ tiếng Hàn, tiếng Anh không bị ảnh hưởng
     clean_text = re.sub(
         r"(?<=[\u3000-\u303f\u3040-\u30ff\u4e00-\u9fff\uff01-\uff60])\s+"
         r"(?=[\u3000-\u303f\u3040-\u30ff\u4e00-\u9fff\uff01-\uff60])",
@@ -60,14 +60,14 @@ def lang_tag_filter(text: str) -> dict:
         clean_text,
     )
 
-    # 保持返回结构一致，避免调用方把纯文本误当成字典访问。
+    # Giữ cấu trúc trả về nhất quán, tránh bên gọi nhầm văn bản thuần thành dict.
     if not all_tags:
         return {"content": clean_text}
 
-    # 按照 FunASR 的固定顺序提取标签，返回 dict
+    # Trích xuất nhãn theo thứ tự cố định của FunASR, trả về dict
     language = all_tags[0] if len(all_tags) > 0 else "zh"
     emotion = all_tags[1] if len(all_tags) > 1 else "NEUTRAL"
-    # event = all_tags[2] if len(all_tags) > 2 else "Speech"  # 事件标签暂不使用
+    # event = all_tags[2] if len(all_tags) > 2 else "Speech"  # Nhãn sự kiện tạm thời không dùng
 
     result = {
         "content": clean_text,
@@ -76,10 +76,10 @@ def lang_tag_filter(text: str) -> dict:
         # "event": event,
     }
 
-    # 添加 emoji 映射
+    # Thêm ánh xạ emoji
     if emotion in EMOTION_EMOJI_MAP:
         result["emotion"] = EMOTION_EMOJI_MAP[emotion]
-    # 事件标签暂不使用
+    # Nhãn sự kiện tạm thời không dùng
     # if event in EVENT_EMOJI_MAP:
     #     result["event"] = EVENT_EMOJI_MAP[event]
 

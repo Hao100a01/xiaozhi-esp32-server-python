@@ -10,7 +10,7 @@ import httpx
 
 TAG = __name__
 
-# _retry_wait 的分片粒度：safe_close 后 ~100ms 内收尾，轮询开销可忽略
+# Độ mịn slice của _retry_wait: sau safe_close kết thúc trong ~100ms, chi phí polling không đáng kể
 _RETRY_WAIT_SLICE = 0.1
 
 
@@ -21,21 +21,21 @@ class DeviceNotFoundException(Exception):
 class DeviceBindException(Exception):
     def __init__(self, bind_code):
         self.bind_code = bind_code
-        super().__init__(f"设备绑定异常，绑定码: {bind_code}")
+        super().__init__(f"Ngoại lệ binding thiết bị, mã binding: {bind_code}")
 
 
 class ManageApiShutdownError(Exception):
-    """safe_close 打断重试等待后的收尾异常，__cause__ 保留最后一次失败原因。"""
+    """Ngoại lệ kết thúc sau khi safe_close ngắt chờ retry, __cause__ giữ nguyên nhân thất bại cuối cùng."""
 
 
 class ManageApiClient:
     _instance = None
-    _instance_lock = threading.Lock()  # 保护 _instance 与 _closed 的读写
+    _instance_lock = threading.Lock()  # Bảo vệ việc đọc/ghi _instance và _closed
     _secret = None
-    _closed = False  # safe_close() 后置为 True，关闭后不再创建新连接
+    _closed = False  # Đặt True sau safe_close(), sau khi đóng không tạo kết nối mới nữa
 
     def __new__(cls, config):
-        """单例模式确保全局唯一实例，并支持传入配置参数"""
+        """Singleton đảm bảo instance duy nhất toàn cục, và hỗ trợ truyền tham số cấu hình"""
         with cls._instance_lock:
             if cls._instance is None:
                 cls._instance = super().__new__(cls)
@@ -44,33 +44,33 @@ class ManageApiClient:
 
     @classmethod
     def _init_client(cls, config):
-        """初始化配置（延迟创建客户端）"""
+        """Khởi tạo cấu hình (tạo client lazy)"""
         cls.config = config.get("manager-api")
 
         if not cls.config:
-            raise Exception("manager-api配置错误")
+            raise Exception("Lỗi cấu hình manager-api")
 
         if not cls.config.get("url") or not cls.config.get("secret"):
-            raise Exception("manager-api的url或secret配置错误")
+            raise Exception("Cấu hình url hoặc secret của manager-api bị sai")
 
         if "你" in cls.config.get("secret"):
-            raise Exception("请先配置manager-api的secret")
+            raise Exception("Vui lòng cấu hình secret của manager-api trước")
 
         cls._secret = cls.config.get("secret")
-        cls.max_retries = cls.config.get("max_retries", 6)  # 最大重试次数
-        cls.retry_delay = cls.config.get("retry_delay", 10)  # 初始重试延迟(秒)
-        # 不在这里创建 AsyncClient，延迟到实际使用时创建
+        cls.max_retries = cls.config.get("max_retries", 6)  # Số lần retry tối đa
+        cls.retry_delay = cls.config.get("retry_delay", 10)  # Delay retry ban đầu (giây)
+        # Không tạo AsyncClient ở đây, hoãn đến khi dùng thực tế mới tạo
         cls._closed = False
 
     @classmethod
     def _build_client(cls) -> httpx.AsyncClient:
-        """构造单次业务请求（含重试）专用的 AsyncClient。
+        """Dựng AsyncClient chuyên dụng cho một request nghiệp vụ (gồm retry).
 
-        约束：由调用方 ``async with`` 在同一 loop 内关闭，禁止跨请求缓存；构造在锁外执行，避免并发请求阻塞事件循环。
+        Ràng buộc: do caller đóng bằng ``async with`` trong cùng một loop, cấm cache xuyên request; việc dựng thực hiện ngoài lock, tránh các request đồng thời block event loop.
         """
         with cls._instance_lock:
             if cls._closed:
-                raise Exception("ManageApiClient已关闭，不再创建新的HTTP客户端")
+                raise Exception("ManageApiClient đã đóng, không tạo HTTP client mới nữa")
             base_url = cls.config.get("url")
             secret = cls._secret
             timeout = cls.config.get("timeout", 30)
@@ -82,15 +82,15 @@ class ManageApiClient:
                 "Authorization": "Bearer " + secret,
             },
             timeout=timeout,
-            # 连接复用仅限本次请求；keepalive_expiry 动态覆盖 retry_delay，
-            # 防止重试等待期间池内连接过期。
+            # Tái dùng kết nối chỉ giới hạn trong request này; keepalive_expiry ghi đè động retry_delay,
+            # ngăn kết nối trong pool hết hạn trong lúc chờ retry.
             limits=httpx.Limits(
                 max_keepalive_connections=1,
                 keepalive_expiry=max(30, cls.retry_delay + 5),
             ),
             trust_env=False,
-            # verify=True 现建 context：httpcore 建连会原地改写传入
-            # context（无锁），共享单例并发握手有竞态。
+            # verify=True tạo context ngay lúc này: httpcore khi thiết lập kết nối sẽ ghi đè tại chỗ context được truyền vào
+            # (không khóa), singleton dùng chung khi handshake đồng thời sẽ có race.
             verify=True,
         )
 
@@ -98,7 +98,7 @@ class ManageApiClient:
     async def _async_request(
         cls, client: httpx.AsyncClient, method: str, endpoint: str, **kwargs
     ) -> Dict:
-        """在给定 client 上执行单次请求；响应读取后立即释放回连接池。"""
+        """Thực hiện một request duy nhất trên client đã cho; sau khi đọc response thì giải phóng ngay về connection pool."""
         endpoint = endpoint.lstrip("/")
         response = None
         try:
@@ -110,31 +110,31 @@ class ManageApiClient:
             elif result.get("code") == 10042:
                 raise DeviceBindException(result.get("msg"))
             elif result.get("code") != 0:
-                raise Exception(f"API返回错误: {result.get('msg', '未知错误')}")
+                raise Exception(f"API trả về lỗi: {result.get('msg', 'Lỗi không xác định')}")
             return result.get("data")
         finally:
             if response is not None:
                 try:
                     await response.aclose()
                 except Exception:
-                    # 约束：必须吞掉释放异常，避免覆盖业务异常、破坏重试判断
+                    # Ràng buộc: phải nuốt exception khi giải phóng, tránh đè lên exception nghiệp vụ, phá vỡ phán đoán retry
                     pass
 
     @classmethod
     def _should_retry(cls, exception: Exception) -> bool:
-        """判断异常是否应该重试"""
-        # 网络连接相关错误
+        """Đánh giá exception có nên retry không"""
+        # Lỗi liên quan kết nối mạng
         if isinstance(
             exception, (httpx.ConnectError, httpx.TimeoutException, httpx.NetworkError)
         ):
             return True
 
-        # RPE 仅"without sending a response"（响应未开始，安全）变体重试；
-        # 截断变体可能已处理请求会重复提交，文案变更时退化为不重试。
+        # RPE chỉ retry biến thể "without sending a response" (response chưa bắt đầu, an toàn);
+        # biến thể bị cắt có thể đã xử lý request và sẽ submit trùng, khi văn bản thay đổi thì thoái hóa thành không retry.
         if isinstance(exception, httpx.RemoteProtocolError):
             return "without sending a response" in str(exception)
 
-        # HTTP状态码错误
+        # Lỗi mã trạng thái HTTP
         if isinstance(exception, httpx.HTTPStatusError):
             status_code = exception.response.status_code
             return status_code in [408, 429, 500, 502, 503, 504]
@@ -143,9 +143,9 @@ class ManageApiClient:
 
     @classmethod
     async def _retry_wait(cls):
-        """可被 safe_close() 打断的重试等待（100ms 分片轮询 _closed）。
+        """Chờ retry có thể bị safe_close() ngắt (polling _closed theo slice 100ms).
 
-        约束：不得一次睡满 retry_delay，否则关闭后收尾要拖满整个重试周期。
+        Ràng buộc: không được ngủ một mạch hết retry_delay, nếu không sau khi đóng, việc kết thúc sẽ kéo dài hết cả chu kỳ retry.
         """
         remaining = cls.retry_delay
         while remaining > 0 and not cls._closed:
@@ -155,9 +155,9 @@ class ManageApiClient:
 
     @classmethod
     async def _execute_async_request(cls, method: str, endpoint: str, **kwargs) -> Dict:
-        """带重试机制的业务请求执行器。
+        """Bộ thực thi request nghiệp vụ có cơ chế retry.
 
-        约束：client 整个重试过程只构造一次，结束后由 ``async with`` 关闭；safe_close 不取消已开始的尝试，只打断重试等待（抛 ManageApiShutdownError）。
+        Ràng buộc: client chỉ được dựng một lần trong toàn bộ quá trình retry, sau khi xong do ``async with`` đóng; safe_close không hủy attempt đã bắt đầu, chỉ ngắt chờ retry (ném ManageApiShutdownError).
         """
         client = cls._build_client()
         async with client:
@@ -165,40 +165,40 @@ class ManageApiClient:
 
             while retry_count <= cls.max_retries:
                 try:
-                    # 执行异步请求
+                    # Thực hiện yêu cầu async
                     return await cls._async_request(client, method, endpoint, **kwargs)
                 except Exception as e:
-                    # 判断是否应该重试
+                    # Đánh giá có nên retry không
                     if retry_count < cls.max_retries and cls._should_retry(e):
                         retry_count += 1
                         print(
-                            f"{method} {endpoint} 异步请求失败，将在 {cls.retry_delay:.1f} 秒后进行第 {retry_count} 次重试"
+                            f"Yêu cầu async {method} {endpoint} thất bại, sẽ retry lần {retry_count} sau {cls.retry_delay:.1f} giây"
                         )
                         await cls._retry_wait()
                         if cls._closed:
-                            # 收尾必须可区分：裸 raise 会把 shutdown 早退伪装
-                            # 成网络抖动，掩盖服务下线信号
+                            # Việc kết thúc phải phân biệt được: raise trần sẽ ngụy trang việc thoát sớm do shutdown
+                            # thành jitter mạng, che giấu tín hiệu service offline
                             raise ManageApiShutdownError(
-                                f"safe_close 已打断重试等待: {e}") from e
+                                f"safe_close đã ngắt chờ retry: {e}") from e
                         continue
                     else:
-                        # 不重试，直接抛出异常
+                        # Không retry, ném exception trực tiếp
                         raise
 
     @classmethod
     def _get_instance(cls) -> Optional["ManageApiClient"]:
-        """线程安全地获取单例实例引用。
+        """Lấy tham chiếu instance singleton một cách thread-safe.
 
-        约束：调用方必须持有返回的局部引用，禁止判空后重读 _instance（TOCTOU 窗口）。
+        Ràng buộc: caller phải giữ tham chiếu local được trả về, cấm đọc lại _instance sau khi check null (cửa sổ TOCTOU).
         """
         with cls._instance_lock:
             return cls._instance
 
     @classmethod
     def safe_close(cls):
-        """关闭请求入口；在途请求在各自事件循环中释放客户端。
+        """Đóng cổng yêu cầu; các request đang bay sẽ giải phóng client trong event loop của chúng.
 
-        已开始的请求不取消；重试等待被打断、跳过剩余重试（见 _retry_wait）。
+        Request đã bắt đầu không bị hủy; chờ retry bị ngắt, bỏ qua các retry còn lại (xem _retry_wait).
         """
         with cls._instance_lock:
             cls._closed = True
@@ -206,14 +206,14 @@ class ManageApiClient:
 
 
 def api_guard(error_msg: str = None, raise_when_closed: bool = False):
-    """装饰器：统一获取单例实例、判空与异常兜底
+    """Decorator: thống nhất việc lấy instance singleton, check null và đỡ exception
 
-    - 通过 _get_instance() 一次性获取实例局部引用，注入为被装饰函数的
-      第一个参数，消除与 safe_close() 之间的 TOCTOU 竞态窗口；
-    - 实例未初始化或已关闭时：raise_when_closed=True 抛出明确异常
-      （用于启动路径函数），否则静默返回 None（用于守护线程路径）；
-    - error_msg 不为 None 时捕获请求异常、打印日志并返回 None；
-      为 None 时异常原样抛出，由调用方处理。
+    - Lấy một lần tham chiếu local của instance qua _get_instance(), inject thành
+      tham số đầu tiên của hàm được decorate, loại bỏ cửa sổ race TOCTOU với safe_close();
+    - Khi instance chưa khởi tạo hoặc đã đóng: raise_when_closed=True ném exception rõ ràng
+      (dùng cho hàm đường khởi động), ngược lại lặng lẽ trả về None (dùng cho đường daemon thread);
+    - Khi error_msg khác None thì bắt exception của request, in log và trả về None;
+      khi là None thì exception được ném nguyên vẹn, do caller xử lý.
     """
 
     def decorator(func):
@@ -222,15 +222,15 @@ def api_guard(error_msg: str = None, raise_when_closed: bool = False):
             instance = ManageApiClient._get_instance()
             if instance is None:
                 if raise_when_closed:
-                    raise Exception("ManageApiClient未初始化或已关闭")
+                    raise Exception("ManageApiClient chưa khởi tạo hoặc đã đóng")
                 return None
             if error_msg is None:
                 return await func(instance, *args, **kwargs)
             try:
                 return await func(instance, *args, **kwargs)
             except Exception as e:
-                # 约束：httpx / 解析异常打全堆栈；业务语义异常只打
-                # message（消息自带上下文，堆栈是高频噪声）
+                # Ràng buộc: exception httpx/parse thì in full stack; exception ngữ nghĩa nghiệp vụ chỉ in
+                # message (message tự mang context, stack là nhiễu tần suất cao)
                 if isinstance(e, (httpx.HTTPError, ValueError)):
                     print(f"{error_msg}: {e}\n{traceback.format_exc()}")
                 else:
@@ -244,7 +244,7 @@ def api_guard(error_msg: str = None, raise_when_closed: bool = False):
 
 @api_guard(raise_when_closed=True)
 async def get_server_config(instance) -> Optional[Dict]:
-    """获取服务器基础配置"""
+    """Lấy cấu hình cơ bản của server"""
     return await instance._execute_async_request("POST", "/config/server-base")
 
 
@@ -252,7 +252,7 @@ async def get_server_config(instance) -> Optional[Dict]:
 async def get_agent_models(
     instance, mac_address: str, client_id: str, selected_module: Dict
 ) -> Optional[Dict]:
-    """获取代理模型配置"""
+    """Lấy cấu hình model của agent"""
     return await instance._execute_async_request(
         "POST",
         "/config/agent-models",
@@ -264,38 +264,38 @@ async def get_agent_models(
     )
 
 
-@api_guard("获取替换词失败")
+@api_guard("Lấy từ thay thế thất bại")
 async def get_correct_words(instance, mac_address: str) -> Optional[Dict]:
-    """获取智能体替换词"""
+    """Lấy từ thay thế của Trợ lý AI"""
     return await instance._execute_async_request(
         "POST", "/config/correct-words",
         json={"macAddress": mac_address}
     )
 
 
-@api_guard("生成并保存聊天记录总结失败")
+@api_guard("Tạo và lưu tóm tắt lịch sử chat thất bại")
 async def generate_and_save_chat_summary(instance, session_id: str) -> Optional[Dict]:
-    """生成并保存聊天记录总结（守护线程中调用，服务已关闭时静默返回 None）"""
+    """Tạo và lưu tóm tắt lịch sử chat (gọi trong daemon thread, khi service đã đóng thì lặng lẽ trả về None)"""
     return await instance._execute_async_request(
         "POST",
         f"/agent/chat-summary/{session_id}/save",
     )
 
 
-@api_guard("生成并保存聊天标题失败")
+@api_guard("Tạo và lưu tiêu đề chat thất bại")
 async def generate_and_save_chat_title(instance, session_id: str) -> Optional[Dict]:
-    """生成并保存聊天标题（守护线程中调用，服务已关闭时静默返回 None）"""
+    """Tạo và lưu tiêu đề chat (gọi trong daemon thread, khi service đã đóng thì lặng lẽ trả về None)"""
     return await instance._execute_async_request(
         "POST",
         f"/agent/chat-title/{session_id}/generate",
     )
 
 
-@api_guard("TTS上报失败")
+@api_guard("Báo cáo TTS thất bại")
 async def report(
     instance, mac_address: str, session_id: str, chat_type: int, content: str, audio, report_time
 ) -> Optional[Dict]:
-    """异步聊天记录上报"""
+    """Báo cáo lịch sử chat bất đồng bộ"""
     if not content:
         return None
     return await instance._execute_async_request(
@@ -314,9 +314,9 @@ async def report(
     )
 
 
-@api_guard("通讯录查找失败")
+@api_guard("Tra danh bạ thất bại")
 async def lookup_address_book(instance, caller_mac: str, nickname: str) -> Optional[Dict]:
-    """根据昵称查找目标设备"""
+    """Tìm thiết bị đích theo nickname"""
     return await instance._execute_async_request(
         "GET",
         f"/device/address-book/lookup?callerMac={caller_mac}&nickname={nickname}",

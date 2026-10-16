@@ -1,5 +1,5 @@
 """
-缓存配置管理
+Quản lý cấu hình cache
 """
 
 from enum import Enum
@@ -9,7 +9,7 @@ from .strategies import CacheStrategy
 
 
 class CacheType(Enum):
-    """缓存类型枚举"""
+    """Enum loại cache"""
 
     LOCATION = "location"
     WEATHER = "weather"
@@ -18,49 +18,49 @@ class CacheType(Enum):
     IP_INFO = "ip_info"
     CONFIG = "config"
     DEVICE_PROMPT = "device_prompt"
-    VOICEPRINT_HEALTH = "voiceprint_health"  # 声纹识别健康检查
-    AUDIO_DATA = "audio_data"  # 音频数据缓存
+    VOICEPRINT_HEALTH = "voiceprint_health"  # Kiểm tra sức khoẻ nhận diện voiceprint
+    AUDIO_DATA = "audio_data"  # Cache dữ liệu audio
 
 
 @dataclass
 class CacheConfig:
-    """缓存配置类"""
+    """Lớp cấu hình cache"""
 
     strategy: CacheStrategy = CacheStrategy.TTL
-    ttl: Optional[float] = 300  # 默认5分钟
-    max_size: Optional[int] = 1000  # 默认最大1000条
-    cleanup_interval: float = 60  # 清理间隔（秒）
+    ttl: Optional[float] = 300  # Mặc định 5 phút
+    max_size: Optional[int] = 1000  # Mặc định tối đa 1000 mục
+    cleanup_interval: float = 60  # Khoảng thời gian dọn dẹp (giây)
 
     @classmethod
     def for_type(cls, cache_type: CacheType) -> "CacheConfig":
-        """根据缓存类型返回预设配置"""
+        """Trả về cấu hình preset theo loại cache"""
         configs = {
             CacheType.LOCATION: cls(
-                strategy=CacheStrategy.TTL, ttl=None, max_size=1000  # 手动失效
+                strategy=CacheStrategy.TTL, ttl=None, max_size=1000  # Hết hiệu lực thủ công
             ),
             CacheType.IP_INFO: cls(
-                strategy=CacheStrategy.TTL, ttl=86400, max_size=1000  # 24小时
+                strategy=CacheStrategy.TTL, ttl=86400, max_size=1000  # 24 giờ
             ),
             CacheType.WEATHER: cls(
-                strategy=CacheStrategy.TTL, ttl=28800, max_size=1000  # 8小时
+                strategy=CacheStrategy.TTL, ttl=28800, max_size=1000  # 8 giờ
             ),
             CacheType.LUNAR: cls(
-                strategy=CacheStrategy.TTL, ttl=2592000, max_size=365  # 30天过期
+                strategy=CacheStrategy.TTL, ttl=2592000, max_size=365  # Hết hạn sau 30 ngày
             ),
             CacheType.INTENT: cls(
-                strategy=CacheStrategy.TTL_LRU, ttl=600, max_size=1000  # 10分钟
+                strategy=CacheStrategy.TTL_LRU, ttl=600, max_size=1000  # 10 phút
             ),
             CacheType.CONFIG: cls(
-                strategy=CacheStrategy.FIXED_SIZE, ttl=None, max_size=20  # 手动失效
+                strategy=CacheStrategy.FIXED_SIZE, ttl=None, max_size=20  # Hết hiệu lực thủ công
             ),
             CacheType.DEVICE_PROMPT: cls(
-                strategy=CacheStrategy.TTL, ttl=None, max_size=1000  # 手动失效
+                strategy=CacheStrategy.TTL, ttl=None, max_size=1000  # Hết hiệu lực thủ công
             ),
             CacheType.VOICEPRINT_HEALTH: cls(
-                strategy=CacheStrategy.TTL, ttl=600, max_size=100  # 10分钟过期
+                strategy=CacheStrategy.TTL, ttl=600, max_size=100  # Hết hạn sau 10 phút
             ),
             CacheType.AUDIO_DATA: cls(
-                strategy=CacheStrategy.TTL, ttl=600, max_size=100  # 10分钟过期
+                strategy=CacheStrategy.TTL, ttl=600, max_size=100  # Hết hạn sau 10 phút
             ),
         }
         return configs.get(cache_type, cls())

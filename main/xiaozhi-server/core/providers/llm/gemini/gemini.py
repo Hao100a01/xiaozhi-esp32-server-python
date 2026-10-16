@@ -26,8 +26,8 @@ def test_proxy(proxy_url: str, test_url: str) -> bool:
 
 def setup_proxy_env(http_proxy: str | None, https_proxy: str | None):
     """
-    分别测试 HTTP 和 HTTPS 代理是否可用，并设置环境变量。
-    如果 HTTPS 代理不可用但 HTTP 可用，会将 HTTPS_PROXY 也指向 HTTP。
+    Kiểm tra riêng proxy HTTP và HTTPS có khả dụng không, rồi đặt biến môi trường.
+    Nếu proxy HTTPS không khả dụng nhưng HTTP khả dụng, sẽ cho HTTPS_PROXY cũng trỏ tới HTTP.
     """
     test_http_url = "http://www.google.com"
     test_https_url = "https://www.google.com"
@@ -38,32 +38,32 @@ def setup_proxy_env(http_proxy: str | None, https_proxy: str | None):
         ok_http = test_proxy(http_proxy, test_http_url)
         if ok_http:
             os.environ["HTTP_PROXY"] = http_proxy
-            log.bind(tag=TAG).info(f"配置提供的Gemini HTTPS代理连通成功: {http_proxy}")
+            log.bind(tag=TAG).info(f"Proxy HTTPS Gemini do cấu hình cung cấp kết nối thành công: {http_proxy}")
         else:
-            log.bind(tag=TAG).warning(f"配置提供的Gemini HTTP代理不可用: {http_proxy}")
+            log.bind(tag=TAG).warning(f"Proxy HTTP Gemini do cấu hình cung cấp không khả dụng: {http_proxy}")
 
     if https_proxy:
         ok_https = test_proxy(https_proxy, test_https_url)
         if ok_https:
             os.environ["HTTPS_PROXY"] = https_proxy
-            log.bind(tag=TAG).info(f"配置提供的Gemini HTTPS代理连通成功: {https_proxy}")
+            log.bind(tag=TAG).info(f"Proxy HTTPS Gemini do cấu hình cung cấp kết nối thành công: {https_proxy}")
         else:
             log.bind(tag=TAG).warning(
-                f"配置提供的Gemini HTTPS代理不可用: {https_proxy}"
+                f"Proxy HTTPS Gemini do cấu hình cung cấp không khả dụng: {https_proxy}"
             )
 
-    # 如果https_proxy不可用，但http_proxy可用且能走通https，则复用http_proxy作为https_proxy
+    # Nếu https_proxy không khả dụng, nhưng http_proxy khả dụng và đi được https, thì tái dùng http_proxy làm https_proxy
     if ok_http and not ok_https:
         if test_proxy(http_proxy, test_https_url):
             os.environ["HTTPS_PROXY"] = http_proxy
             ok_https = True
-            log.bind(tag=TAG).info(f"复用HTTP代理作为HTTPS代理: {http_proxy}")
+            log.bind(tag=TAG).info(f"Tái dùng proxy HTTP làm proxy HTTPS: {http_proxy}")
 
     if not ok_http and not ok_https:
         log.bind(tag=TAG).error(
-            f"Gemini 代理设置失败: HTTP 和 HTTPS 代理都不可用，请检查配置"
+            f"Thiết lập proxy Gemini thất bại: cả proxy HTTP và HTTPS đều không khả dụng, vui lòng kiểm tra cấu hình"
         )
-        raise RuntimeError("HTTP 和 HTTPS 代理都不可用，请检查配置")
+        raise RuntimeError("Cả proxy HTTP và HTTPS đều không khả dụng, vui lòng kiểm tra cấu hình")
 
 
 class LLMProvider(LLMProviderBase):
@@ -79,19 +79,19 @@ class LLMProvider(LLMProviderBase):
 
         if http_proxy or https_proxy:
             log.bind(tag=TAG).info(
-                f"检测到Gemini代理配置，开始测试代理连通性和设置代理环境..."
+                f"Đã phát hiện cấu hình proxy Gemini, bắt đầu kiểm tra kết nối proxy và thiết lập môi trường proxy..."
             )
             setup_proxy_env(http_proxy, https_proxy)
             log.bind(tag=TAG).info(
-                f"Gemini 代理设置成功 - HTTP: {http_proxy}, HTTPS: {https_proxy}"
+                f"Thiết lập proxy Gemini thành công - HTTP: {http_proxy}, HTTPS: {https_proxy}"
             )
-        # 配置API密钥
+        # Cấu hình khoá API
         genai.configure(api_key=self.api_key)
 
-        # 设置请求超时（秒）
-        self.timeout = cfg.get("timeout", 120)  # 默认120秒
+        # Đặt thời gian chờ yêu cầu (giây)
+        self.timeout = cfg.get("timeout", 120)  # Mặc định 120 giây
 
-        # 创建模型实例
+        # Tạo instance mô hình
         self.model = genai.GenerativeModel(self.model_name)
 
         self.gen_cfg = GenerationConfig(
@@ -118,7 +118,7 @@ class LLMProvider(LLMProviderBase):
             )
         ]
 
-    # Gemini文档提到，无需维护session-id，直接用dialogue拼接而成
+    # Tài liệu Gemini nói rằng không cần duy trì session-id, dùng trực tiếp dialogue nối lại
     def response(self, session_id, dialogue, **kwargs):
         yield from self._generate(dialogue, None)
 
@@ -128,7 +128,7 @@ class LLMProvider(LLMProviderBase):
     def _generate(self, dialogue, tools):
         role_map = {"assistant": "model", "user": "user"}
         contents: list = []
-        # 拼接对话
+        # Nối hội thoại
         for m in dialogue:
             r = m["role"]
 
@@ -177,7 +177,7 @@ class LLMProvider(LLMProviderBase):
             for chunk in stream:
                 cand = chunk.candidates[0]
                 for part in cand.content.parts:
-                    # a) 函数调用-通常是最后一段话才是函数调用
+                    # a) Gọi hàm - thường đoạn cuối cùng mới là gọi hàm
                     if getattr(part, "function_call", None):
                         fc = part.function_call
                         yield None, [
@@ -193,15 +193,15 @@ class LLMProvider(LLMProviderBase):
                             )
                         ]
                         return
-                    # b) 普通文本
+                    # b) Văn bản thường
                     if getattr(part, "text", None):
                         yield part.text if tools is None else (part.text, None)
 
         finally:
             if tools is not None:
-                yield None, None  # function‑mode 结束，返回哑包
+                yield None, None  # function-mode kết thúc, trả về gói rỗng
 
-    # 关闭stream，预留后续打断对话功能的功能方法，官方文档推荐打断对话要关闭上一个流，可以有效减少配额计费和资源占用
+    # Đóng stream, dành sẵn phương thức cho chức năng ngắt hội thoại sau này; tài liệu chính thức khuyến nghị khi ngắt hội thoại phải đóng stream trước đó, giúp giảm đáng kể tính phí hạn ngạch và chiếm dụng tài nguyên
     @staticmethod
     def _safe_finish_stream(stream: GenerateContentResponse):
         if hasattr(stream, "resolve"):
@@ -209,5 +209,5 @@ class LLMProvider(LLMProviderBase):
         elif hasattr(stream, "close"):
             stream.close()  # Gemini SDK version < 0.5.0
         else:
-            for _ in stream:  # 兜底耗尽
+            for _ in stream:  # Dùng hết để dự phòng
                 pass

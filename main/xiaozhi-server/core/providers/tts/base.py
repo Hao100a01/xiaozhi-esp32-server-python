@@ -45,30 +45,30 @@ class TTSProviderBase(ABC):
         self.tts_audio_first_sentence = True
         self.before_stop_play_files = []
         self.report_on_last = False
-        # sentence_id 到文本的映射，用于流式TTS获取正确的字幕文本
+        # Ánh xạ sentence_id tới văn bản, dùng để TTS streaming lấy đúng văn bản phụ đề
         self._sentence_text_map = {}
-        # 加载替换词，用于一次性正则替换
+        # Tải từ thay thế, dùng cho thay thế regex một lần
         raw_words = config.get("correct_words", [])
         self.correct_words = {}
         for item in raw_words:
             parts = item.split("|", 1)
             if len(parts) == 2:
                 self.correct_words[parts[0]] = parts[1]
-        # 构建正则表达式，使用最长匹配优先（排序后转义拼接）
+        # Tạo biểu thức chính quy, ưu tiên khớp dài nhất (sắp xếp rồi escape nối lại)
         if self.correct_words:
-            # 按key长度降序排列，长的先匹配，避免短词部分干扰
+            # Sắp xếp giảm dần theo độ dài key, từ dài khớp trước, tránh từ ngắn gây nhiễu một phần
             sorted_keys = sorted(self.correct_words.keys(), key=len, reverse=True)
             pattern_str = "|".join(re.escape(k) for k in sorted_keys)
             self._correct_words_pattern = re.compile(pattern_str)
-            # 构建反向替换正则，用于将TTS服务返回的替换后文本还原为原始文本（字幕显示）
+            # Tạo regex thay thế ngược, dùng để khôi phục văn bản đã thay thế do dịch vụ TTS trả về thành văn bản gốc (hiển thị phụ đề)
             reverse_map = {v: k for k, v in self.correct_words.items()}
             sorted_reverse_keys = sorted(reverse_map.keys(), key=len, reverse=True)
             reverse_pattern_str = "|".join(re.escape(k) for k in sorted_reverse_keys)
             self._reverse_words_pattern = re.compile(reverse_pattern_str)
             self._reverse_words_map = reverse_map
-            # 流式滑动窗口：按首字分组的替换词字典，用于快速查找
+            # Cửa sổ trượt streaming: dict từ thay thế nhóm theo ký tự đầu, dùng để tra nhanh
             self._words_by_first_char = {}
-            for key in sorted_keys:  # 使用已按长度降序排列的keys，确保长词优先匹配
+            for key in sorted_keys:  # Dùng keys đã sắp xếp giảm dần theo độ dài, đảm bảo từ dài khớp trước
                 first_char = key[0] if key else ""
                 if first_char not in self._words_by_first_char:
                     self._words_by_first_char[first_char] = []
@@ -78,7 +78,7 @@ class TTSProviderBase(ABC):
             self._reverse_words_pattern = None
             self._reverse_words_map = None
 
-        # 流式滑动窗口：待匹配的缓存文本
+        # Cửa sổ trượt streaming: văn bản đệm chờ khớp
         self._pending_prefix = ""
         self.tts_text_buff = []
         self.punctuations = (
@@ -116,27 +116,27 @@ class TTSProviderBase(ABC):
         )
 
     def handle_opus(self, opus_data: bytes):
-        logger.bind(tag=TAG).debug(f"推送数据到队列里面帧数～～ {len(opus_data)}")
+        logger.bind(tag=TAG).debug(f"Số khung đẩy vào hàng đợi～～ {len(opus_data)}")
         self.tts_audio_queue.put((SentenceType.MIDDLE, opus_data, None, getattr(self, 'current_sentence_id', None)))
 
     def handle_audio_file(self, file_audio: bytes, text):
         self.before_stop_play_files.append((file_audio, text))
 
     def to_tts_stream(self, text, opus_handler: Callable[[bytes], None] = None) -> None:
-        # 保留原始文本用于显示/上报
+        # Giữ văn bản gốc để hiển thị/báo cáo
         original_text = text
         text = MarkdownCleaner.clean_markdown(text)
-        # 使用正则一次性替换，避免重复遍历和部分匹配问题
+        # Dùng regex thay thế một lần, tránh duyệt lặp và vấn đề khớp một phần
         if self._correct_words_pattern:
             text = self._correct_words_pattern.sub(lambda m: self.correct_words[m.group(0)], text)
         max_repeat_time = 5
         if self.delete_audio_file:
-            # 需要删除文件的直接转为音频数据
+            # Tệp cần xoá thì chuyển trực tiếp thành dữ liệu âm thanh
             while max_repeat_time > 0:
                 try:
                     audio_bytes = asyncio.run(self.text_to_speak(text, None))
                     if audio_bytes:
-                        # 使用原始文本用于显示/上报
+                        # Dùng văn bản gốc để hiển thị/báo cáo
                         self.tts_audio_queue.put((SentenceType.FIRST, None, original_text, getattr(self, 'current_sentence_id', None)))
                         audio_bytes_to_data_stream(
                             audio_bytes,
@@ -151,16 +151,16 @@ class TTSProviderBase(ABC):
                         max_repeat_time -= 1
                 except Exception as e:
                     logger.bind(tag=TAG).warning(
-                        f"语音生成失败{5 - max_repeat_time + 1}次: {original_text}，错误: {e}"
+                        f"Tạo giọng nói thất bại lần {5 - max_repeat_time + 1}: {original_text}, lỗi: {e}"
                     )
                     max_repeat_time -= 1
             if max_repeat_time > 0:
                 logger.bind(tag=TAG).info(
-                    f"语音生成成功: {original_text}，重试{5 - max_repeat_time}次"
+                    f"Tạo giọng nói thành công: {original_text}, thử lại {5 - max_repeat_time} lần"
                 )
             else:
                 logger.bind(tag=TAG).error(
-                    f"语音生成失败: {original_text}，请检查网络或服务是否正常"
+                    f"Tạo giọng nói thất bại: {original_text}, vui lòng kiểm tra mạng hoặc dịch vụ có bình thường không"
                 )
             return None
         else:
@@ -171,20 +171,20 @@ class TTSProviderBase(ABC):
                         asyncio.run(self.text_to_speak(text, tmp_file))
                     except Exception as e:
                         logger.bind(tag=TAG).warning(
-                            f"语音生成失败{5 - max_repeat_time + 1}次: {original_text}，错误: {e}"
+                            f"Tạo giọng nói thất bại lần {5 - max_repeat_time + 1}: {original_text}, lỗi: {e}"
                         )
-                        # 未执行成功，删除文件
+                        # Chưa thực thi thành công, xoá tệp
                         if os.path.exists(tmp_file):
                             os.remove(tmp_file)
                         max_repeat_time -= 1
 
                 if max_repeat_time > 0:
                     logger.bind(tag=TAG).info(
-                        f"语音生成成功: {original_text}:{tmp_file}，重试{5 - max_repeat_time}次"
+                        f"Tạo giọng nói thành công: {original_text}:{tmp_file}, thử lại {5 - max_repeat_time} lần"
                     )
                 else:
                     logger.bind(tag=TAG).error(
-                        f"语音生成失败: {original_text}，请检查网络或服务是否正常"
+                        f"Tạo giọng nói thất bại: {original_text}, vui lòng kiểm tra mạng hoặc dịch vụ có bình thường không"
                     )
                 self.tts_audio_queue.put((SentenceType.FIRST, None, original_text, getattr(self, 'current_sentence_id', None)))
                 self._process_audio_file_stream(tmp_file, callback=opus_handler)
@@ -193,14 +193,14 @@ class TTSProviderBase(ABC):
                 return None
     
     def to_tts(self, text):
-        # 保留原始文本用于日志/显示
+        # Giữ văn bản gốc cho log/hiển thị
         original_text = text
         text = MarkdownCleaner.clean_markdown(text)
         if self._correct_words_pattern:
             text = self._correct_words_pattern.sub(lambda m: self.correct_words[m.group(0)], text)
         max_repeat_time = 5
         if self.delete_audio_file:
-            # 需要删除文件的直接转为音频数据
+            # Tệp cần xoá thì chuyển trực tiếp thành dữ liệu âm thanh
             while max_repeat_time > 0:
                 try:
                     audio_bytes = asyncio.run(self.text_to_speak(text, None))
@@ -218,16 +218,16 @@ class TTSProviderBase(ABC):
                         max_repeat_time -= 1
                 except Exception as e:
                     logger.bind(tag=TAG).warning(
-                        f"语音生成失败{5 - max_repeat_time + 1}次: {original_text}，错误: {e}"
+                        f"Tạo giọng nói thất bại lần {5 - max_repeat_time + 1}: {original_text}, lỗi: {e}"
                     )
                     max_repeat_time -= 1
             if max_repeat_time > 0:
                 logger.bind(tag=TAG).info(
-                    f"语音生成成功: {original_text}，重试{5 - max_repeat_time}次"
+                    f"Tạo giọng nói thành công: {original_text}, thử lại {5 - max_repeat_time} lần"
                 )
             else:
                 logger.bind(tag=TAG).error(
-                    f"语音生成失败: {original_text}，请检查网络或服务是否正常"
+                    f"Tạo giọng nói thất bại: {original_text}, vui lòng kiểm tra mạng hoặc dịch vụ có bình thường không"
                 )
             return None
         else:
@@ -238,20 +238,20 @@ class TTSProviderBase(ABC):
                         asyncio.run(self.text_to_speak(text, tmp_file))
                     except Exception as e:
                         logger.bind(tag=TAG).warning(
-                            f"语音生成失败{5 - max_repeat_time + 1}次: {original_text}，错误: {e}"
+                            f"Tạo giọng nói thất bại lần {5 - max_repeat_time + 1}: {original_text}, lỗi: {e}"
                         )
-                        # 未执行成功，删除文件
+                        # Chưa thực thi thành công, xoá tệp
                         if os.path.exists(tmp_file):
                             os.remove(tmp_file)
                         max_repeat_time -= 1
 
                 if max_repeat_time > 0:
                     logger.bind(tag=TAG).info(
-                        f"语音生成成功: {original_text}:{tmp_file}，重试{5 - max_repeat_time}次"
+                        f"Tạo giọng nói thành công: {original_text}:{tmp_file}, thử lại {5 - max_repeat_time} lần"
                     )
                 else:
                     logger.bind(tag=TAG).error(
-                        f"语音生成失败: {original_text}，请检查网络或服务是否正常"
+                        f"Tạo giọng nói thất bại: {original_text}, vui lòng kiểm tra mạng hoặc dịch vụ có bình thường không"
                     )
 
                 return tmp_file
@@ -266,13 +266,13 @@ class TTSProviderBase(ABC):
     def audio_to_pcm_data_stream(
         self, audio_file_path, callback: Callable[[Any], Any] = None
     ):
-        """音频文件转换为PCM编码"""
+        """Chuyển tệp âm thanh sang mã hoá PCM"""
         return audio_to_data_stream(audio_file_path, is_opus=False, callback=callback, sample_rate=self.conn.sample_rate, opus_encoder=None)
 
     def audio_to_opus_data_stream(
         self, audio_file_path, callback: Callable[[Any], Any] = None
     ):
-        """音频文件转换为Opus编码"""
+        """Chuyển tệp âm thanh sang mã hoá Opus"""
         return audio_to_data_stream(audio_file_path, is_opus=True, callback=callback, sample_rate=self.conn.sample_rate, opus_encoder=self.opus_encoder)
 
     def tts_one_sentence(
@@ -283,14 +283,14 @@ class TTSProviderBase(ABC):
         content_file=None,
         sentence_id=None,
     ):
-        """发送一句话"""
+        """Gửi một câu"""
         if not sentence_id:
             if conn.sentence_id:
                 sentence_id = conn.sentence_id
             else:
                 sentence_id = str(uuid.uuid4().hex)
                 conn.sentence_id = sentence_id
-        # 对于单句的文本，进行分段处理
+        # Với văn bản một câu, xử lý chia đoạn
         segments = re.split(r"([。！？!?；;\n])", content_detail)
         for seg in segments:
             self.tts_text_queue.put(
@@ -306,54 +306,54 @@ class TTSProviderBase(ABC):
     async def open_audio_channels(self, conn):
         self.conn = conn
 
-        # 根据conn的sample_rate创建编码器，如果子类已经创建则不覆盖（IndexTTS接口返回为24kHZ-待重采样处理）
+        # Tạo bộ mã hoá theo sample_rate của conn, nếu lớp con đã tạo thì không ghi đè (giao diện IndexTTS trả về 24kHz - chờ xử lý resample)
         if not hasattr(self, 'opus_encoder') or self.opus_encoder is None:
             self.opus_encoder = opus_encoder_utils.OpusEncoderUtils(
                 sample_rate=conn.sample_rate, channels=1, frame_size_ms=60
             )
 
-        # tts 消化线程
+        # Luồng tiêu hoá tts
         self.tts_priority_thread = threading.Thread(
             target=self.tts_text_priority_thread, daemon=True
         )
         self.tts_priority_thread.start()
 
-        # 音频播放 消化线程
+        # Luồng tiêu hoá phát âm thanh
         self.audio_play_priority_thread = threading.Thread(
             target=self._audio_play_priority_thread, daemon=True
         )
         self.audio_play_priority_thread.start()
 
     def store_tts_text(self, sentence_id, text):
-        """存储指定 sentence_id 对应的文本，用于流式TTS获取正确的字幕文本
+        """Lưu trữ văn bản tương ứng với sentence_id được chỉ định, dùng để TTS streaming lấy đúng văn bản phụ đề
 
         Args:
-            sentence_id: 会话ID
-            text: 要存储的文本
+            sentence_id: ID phiên
+            text: Văn bản cần lưu trữ
         """
         if sentence_id and text:
             self._sentence_text_map[sentence_id] = text
-            # 只保留最近 5 个，防止内存泄漏
+            # Chỉ giữ 5 cái gần nhất, tránh rò rỉ bộ nhớ
             if len(self._sentence_text_map) > 5:
                 oldest = next(iter(self._sentence_text_map))
                 del self._sentence_text_map[oldest]
 
     def get_tts_text(self, sentence_id):
-        """获取指定 sentence_id 对应的文本
+        """Lấy văn bản tương ứng với sentence_id được chỉ định
 
         Args:
-            sentence_id: 会话ID
+            sentence_id: ID phiên
 
         Returns:
-            str: 对应的文本，如果不存在返回 None
+            str: Văn bản tương ứng, nếu không tồn tại trả về None
         """
         return self._sentence_text_map.get(sentence_id)
 
     def clear_tts_text(self, sentence_id):
-        """清除指定 sentence_id 的文本
+        """Xoá văn bản của sentence_id được chỉ định
 
         Args:
-            sentence_id: 会话ID
+            sentence_id: ID phiên
         """
         if sentence_id in self._sentence_text_map:
             del self._sentence_text_map[sentence_id]
@@ -365,16 +365,16 @@ class TTSProviderBase(ABC):
             lambda m: self._reverse_words_map[m.group(0)], text
         )
 
-    # 这里默认是非流式的处理方式
-    # 流式处理方式请在子类中重写
+    # Ở đây mặc định là cách xử lý không streaming
+    # Cách xử lý streaming hãy ghi đè trong lớp con
     def tts_text_priority_thread(self):
         while not self.conn.stop_event.is_set():
             try:
                 message = self.tts_text_queue.get(timeout=1)
                 if self.conn.client_abort:
-                    logger.bind(tag=TAG).info("收到打断信息，终止TTS文本处理线程")
+                    logger.bind(tag=TAG).info("Đã nhận thông tin ngắt, dừng luồng xử lý văn bản TTS")
                     continue
-                # 过滤旧消息：检查sentence_id是否匹配
+                # Lọc thông điệp cũ: kiểm tra sentence_id có khớp không
                 if message.sentence_id != self.conn.sentence_id:
                     continue
                 if message.sentence_type == SentenceType.FIRST:
@@ -406,12 +406,12 @@ class TTSProviderBase(ABC):
                 continue
             except Exception as e:
                 logger.bind(tag=TAG).error(
-                    f"处理TTS文本失败: {str(e)}, 类型: {type(e).__name__}, 堆栈: {traceback.format_exc()}"
+                    f"Xử lý văn bản TTS thất bại: {str(e)}, kiểu: {type(e).__name__}, ngăn xếp: {traceback.format_exc()}"
                 )
                 continue
 
     def _audio_play_priority_thread(self):
-        # 需要上报的文本和音频列表
+        # Danh sách văn bản và âm thanh cần báo cáo
         enqueue_text = None
         enqueue_audio = []
         while not self.conn.stop_event.is_set():
@@ -430,15 +430,15 @@ class TTSProviderBase(ABC):
                     continue
 
                 if self.conn.client_abort:
-                    logger.bind(tag=TAG).debug("收到打断信号，跳过当前音频数据")
+                    logger.bind(tag=TAG).debug("Đã nhận tín hiệu ngắt, bỏ qua dữ liệu âm thanh hiện tại")
                     enqueue_text, enqueue_audio = None, []
                     continue
 
-                # 收到下一个文本开始或会话结束时进行上报
+                # Báo cáo khi nhận bắt đầu văn bản tiếp theo hoặc kết thúc phiên
                 if sentence_type is not SentenceType.MIDDLE:
                     if self.report_on_last:
-                        # 累积模式：适用于全程只有一个语音流的TTS（如seed-tts-2.0）
-                        # FIRST时只记录文本，音频持续累积，仅在LAST时统一上报
+                        # Chế độ tích luỹ: phù hợp TTS chỉ có một luồng giọng nói suốt quá trình (như seed-tts-2.0)
+                        # Khi FIRST chỉ ghi văn bản, âm thanh tích luỹ liên tục, chỉ báo cáo thống nhất khi LAST
                         if text:
                             enqueue_text = text
                         if sentence_type == SentenceType.LAST:
@@ -446,24 +446,24 @@ class TTSProviderBase(ABC):
                             enqueue_audio = []
                             enqueue_text = None
                     else:
-                        # 非累积模式：每个句子分别上报
+                        # Chế độ không tích luỹ: mỗi câu báo cáo riêng
                         if enqueue_text is not None:
                             enqueue_tts_report(self.conn, enqueue_text, enqueue_audio)
                         enqueue_audio = []
                         enqueue_text = text
 
-                # 收集上报音频数据
+                # Thu thập dữ liệu âm thanh báo cáo
                 if isinstance(audio_datas, bytes):
                     enqueue_audio.append(audio_datas)
 
-                # 发送音频
+                # Gửi âm thanh
                 future = asyncio.run_coroutine_threadsafe(
                     sendAudioMessage(self.conn, sentence_type, audio_datas, text, sentence_id),
                     self.conn.loop,
                 )
                 future.result()
 
-                # 记录输出和报告
+                # Ghi đầu ra và báo cáo
                 if self.conn.max_output_size > 0 and text:
                     add_device_output(self.conn.headers.get("device-id"), len(text))
 
@@ -477,12 +477,12 @@ class TTSProviderBase(ABC):
         pass
 
     async def close(self):
-        """资源清理方法"""
+        """Phương thức dọn dẹp tài nguyên"""
         self._sentence_text_map.clear()
         if hasattr(self, "ws") and self.ws:
             await self.ws.close()
 
-    # 右引号/右括号，以及它们对应的左侧符号
+    # Dấu ngoặc kép phải/ngoặc đơn phải, và ký hiệu bên trái tương ứng của chúng
     _QUOTE_PAIRS = (
         ("「", "」"),
         ("『", "』"),
@@ -497,21 +497,21 @@ class TTSProviderBase(ABC):
         ("［", "］"),
         ("[", "]"),
     )
-    # 注意：“（U+201C）有双重语义：中文里是开引号（对应 ”），
-    # 德语 „…“ 里是闭引号；二者冲突时计数法无法兼顾，
-    # 德语句子的切分只能靠“不平衡就顺延”保守处理（最终由 flush 兜底）。
+    # Lưu ý: " (U+201C) có hai nghĩa: trong tiếng Trung là dấu mở ngoặc kép (tương ứng "),
+    # Trong tiếng Đức „…" là dấu đóng ngoặc kép; khi hai nghĩa xung đột, phương pháp đếm không thể đáp ứng cả hai,
+    # Việc chia câu tiếng Đức chỉ có thể xử lý thận trọng bằng cách "không cân bằng thì dời tiếp" (cuối cùng flush sẽ dự phòng).
     _CLOSERS = '」』”》）"»“】〉］]'
     _QUOTE_CHARS = "".join(ch for pair in _QUOTE_PAIRS for ch in pair)
 
     @classmethod
     def _quote_safe_cut(cls, text: str, pos: int, punctuations) -> int:
-        """避免在引号内切分（如 「わぁ！」って / “好！”他说）。
+        """Tránh chia trong ngoặc kép (như 「わぁ！」って / "Tốt!" anh ấy nói).
 
-        候选位置之后紧跟的右引号和句末标点一并带走；若候选位于未闭合的引号内，
-        或右引号后句子还在继续，则顺延到下一个标点；都不安全时返回 -1，等待更多文本。
+        Dấu ngoặc kép phải và dấu câu cuối câu ngay sau vị trí ứng viên được mang theo cùng; nếu ứng viên nằm trong ngoặc kép chưa đóng,
+        hoặc câu vẫn tiếp tục sau dấu ngoặc kép phải, thì dời tới dấu câu tiếp theo; khi đều không an toàn thì trả về -1, chờ thêm văn bản.
         """
         if not any(ch in cls._QUOTE_CHARS for ch in text):
-            # 全文不含引号/括号：不存在未闭合引号，右引号也无需携带，候选位置必然安全
+            # Toàn văn không chứa ngoặc kép/ngoặc đơn: không tồn tại ngoặc kép chưa đóng, dấu ngoặc kép phải cũng không cần mang theo, vị trí ứng viên chắc chắn an toàn
             return pos
         candidates = [pos] + [
             i for i, ch in enumerate(text) if i > pos and ch in punctuations
@@ -526,7 +526,7 @@ class TTSProviderBase(ABC):
                     carried_closer = True
                 end += 1
             segment = text[:end]
-            # 前后配对的引号（「」等）用计数差检测；前后同符的引号（"）用奇偶检测
+            # Ngoặc kép ghép cặp trước-sau (「」 v.v.) dùng chênh lệch đếm để phát hiện; ngoặc kép cùng ký tự trước-sau (") dùng chẵn lẻ để phát hiện
             balanced = True
             for opener, closer in cls._QUOTE_PAIRS:
                 n_open = segment.count(opener)
@@ -540,25 +540,25 @@ class TTSProviderBase(ABC):
             if not balanced:
                 continue
             if carried_closer and (end == len(text) or not text[end].isspace()):
-                # 右引号之后句子还在继续（「…」って、“…”他说），或暂时看不到后文
+                # Câu vẫn tiếp tục sau dấu ngoặc kép phải (「…」って、"…" anh ấy nói), hoặc tạm thời chưa thấy phần sau
                 continue
             return end - 1
         return -1
 
     def _get_segment_text(self) -> Optional[str]:
-        # 合并当前全部文本并处理未分割部分
+        # Gộp toàn bộ văn bản hiện tại và xử lý phần chưa chia
         full_text = "".join(self.tts_text_buff)
-        current_text = full_text[self.processed_chars :]  # 从未处理的位置开始
+        current_text = full_text[self.processed_chars :]  # Bắt đầu từ vị trí chưa xử lý
         last_punct_pos = -1
 
-        # 根据是否是第一句话选择不同的标点符号集合
+        # Chọn tập hợp dấu câu khác nhau tuỳ có phải câu đầu tiên không
         punctuations_to_use = (
             self.first_sentence_punctuations
             if self.is_first_sentence
             else self.punctuations
         )
 
-        # 取每种标点最后出现位置的最早者作为切分点（与逐个 rfind 再取最小值等价）
+        # Lấy vị trí xuất hiện cuối cùng sớm nhất của mỗi loại dấu câu làm điểm chia (tương đương với rfind từng cái rồi lấy giá trị nhỏ nhất)
         last_seen = {}
         for i, ch in enumerate(current_text):
             if ch in punctuations_to_use:
@@ -575,16 +575,16 @@ class TTSProviderBase(ABC):
             segment_text = textUtils.get_string_no_punctuation_or_emoji(
                 segment_text_raw
             )
-            self.processed_chars += len(segment_text_raw)  # 更新已处理字符位置
+            self.processed_chars += len(segment_text_raw)  # Cập nhật vị trí ký tự đã xử lý
 
-            # 如果是第一句话，在找到第一个逗号后，将标志设置为False
+            # Nếu là câu đầu tiên, sau khi tìm thấy dấu phẩy đầu tiên, đặt cờ thành False
             if self.is_first_sentence:
                 self.is_first_sentence = False
 
             return segment_text
         elif self.tts_stop_request and current_text:
             segment_text = current_text
-            self.is_first_sentence = True  # 重置标志
+            self.is_first_sentence = True  # Đặt lại cờ
             return segment_text
         else:
             return None
@@ -592,11 +592,11 @@ class TTSProviderBase(ABC):
     def _process_audio_file_stream(
         self, tts_file, callback: Callable[[Any], Any]
     ) -> None:
-        """处理音频文件并转换为指定格式
+        """Xử lý tệp âm thanh và chuyển sang định dạng được chỉ định
 
         Args:
-            tts_file: 音频文件路径
-            callback: 文件处理函数
+            tts_file: Đường dẫn tệp âm thanh
+            callback: Hàm xử lý tệp
         """
         if tts_file.endswith(".p3"):
             p3.decode_opus_from_file_stream(tts_file, callback=callback)
@@ -622,10 +622,10 @@ class TTSProviderBase(ABC):
     def _process_remaining_text_stream(
         self, opus_handler: Callable[[bytes], None] = None
     ):
-        """处理剩余的文本并生成语音
+        """Xử lý văn bản còn lại và tạo giọng nói
 
         Returns:
-            bool: 是否成功处理了文本
+            bool: Có xử lý văn bản thành công không
         """
         full_text = "".join(self.tts_text_buff)
         remaining_text = full_text[self.processed_chars :]
@@ -638,20 +638,20 @@ class TTSProviderBase(ABC):
         return False
 
     def _apply_percentage_params(self, config):
-        """根据子类定义的 TTS_PARAM_CONFIG 批量应用百分比参数"""
+        """Áp dụng hàng loạt tham số phần trăm theo TTS_PARAM_CONFIG do lớp con định nghĩa"""
         for config_key, attr_name, min_val, max_val, base_val, transform in self.TTS_PARAM_CONFIG:
             if config_key in config:
                 val = convert_percentage_to_range(config[config_key], min_val, max_val, base_val)
                 setattr(self, attr_name, transform(val) if transform else val)
 
     def _match_stream_text(self, text):
-        """流式文本滑动窗口匹配，用于处理跨分片的替换词
+        """Khớp cửa sổ trượt văn bản streaming, dùng để xử lý từ thay thế xuyên mảnh
 
         Args:
-            text: 输入的文本片段
+            text: Đoạn văn bản đầu vào
 
         Returns:
-            tuple: (确定的文本列表, 剩余待匹配的前缀)
+            tuple: (danh sách văn bản đã xác định, tiền tố còn chờ khớp)
         """
         if not self.correct_words or not text:
             return [text] if text else [], ""
@@ -663,21 +663,21 @@ class TTSProviderBase(ABC):
         while i < len(text):
             char = text[i]
 
-            # 尝试：pending + 当前字符 是否能匹配替换词
+            # Thử: pending + ký tự hiện tại có khớp từ thay thế không
             test_text = pending + char
 
             matched = False
-            # 遍历可能匹配的替换词
+            # Duyệt các từ thay thế có thể khớp
             candidates = self._words_by_first_char.get(pending[0], []) if pending else self._words_by_first_char.get(char, [])
             for key in candidates:
                 if test_text == key:
-                    # 完整匹配，替换后发送
+                    # Khớp đầy đủ, thay thế rồi gửi
                     result.append(self.correct_words[key])
                     pending = ""
                     matched = True
                     break
                 elif key.startswith(test_text):
-                    # 是替换词的前缀，继续等待
+                    # Là tiền tố của từ thay thế, tiếp tục chờ
                     pending = test_text
                     matched = True
                     break
@@ -686,12 +686,12 @@ class TTSProviderBase(ABC):
                 i += 1
                 continue
 
-            # 没有匹配到更长的词，pending 的内容确定可以发送
+            # Không khớp được từ dài hơn, nội dung của pending chắc chắn có thể gửi
             if pending:
                 result.append(pending)
                 pending = ""
 
-            # 检查当前字符是否是某个替换词的开头
+            # Kiểm tra ký tự hiện tại có phải đầu của từ thay thế nào không
             if char in self._words_by_first_char:
                 pending = char
             else:
@@ -702,5 +702,5 @@ class TTSProviderBase(ABC):
         return result, pending
 
     def reset_stream_state(self):
-        """重置流式处理状态，用于会话开始时清理残留状态"""
+        """Đặt lại trạng thái xử lý streaming, dùng để dọn trạng thái còn sót khi bắt đầu phiên"""
         self._pending_prefix = ""

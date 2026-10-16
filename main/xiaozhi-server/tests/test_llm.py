@@ -1,19 +1,19 @@
-"""LLM 链路测试。
+"""Test chuỗi LLM.
 
-Mock 模式（默认）：从 data/.config.yaml 拿配置构造真实 provider，
-网络调用走 conftest 注入的 shim —— 不发任何请求。
-Live 模式（``RUN_LIVE_API_TESTS=1``）：调真实 LLM provider，参考
-``performance_tester_llm.py`` 的 ThreadPoolExecutor + 10s 超时模式。
+Chế độ Mock (mặc định): lấy cấu hình từ data/.config.yaml để khởi tạo provider thật,
+các cuộc gọi network đi qua shim được conftest inject —— không gửi request nào.
+Chế độ Live (``RUN_LIVE_API_TESTS=1``): gọi LLM provider thật, tham khảo mẫu
+ThreadPoolExecutor + timeout 10s của ``performance_tester_llm.py``.
 
-接口约定（core/providers/llm/base.py）：
-    response(session_id, dialogue) -> Iterator[str]，同步流式生成器
+Quy ước interface (core/providers/llm/base.py):
+    response(session_id, dialogue) -> Iterator[str], generator stream đồng bộ
     response_no_stream(system_prompt, user_content) -> str
 
-特殊处理：
-- CozeLLM 看 bot_id / user_id 而非 api_key
-- Ollama 要 model_name + 本地服务可用
-- placeholder 检测（"你的" / "placeholder" / "xxx" / "sk-xxx"）
-- 因为 LLM 是同步 generator，不能直接 asyncio.wait_for → 线程池
+Xử lý đặc biệt:
+- CozeLLM xem bot_id / user_id chứ không phải api_key
+- Ollama cần model_name + dịch vụ local khả dụng
+- Phát hiện placeholder ("你的" / "placeholder" / "xxx" / "sk-xxx")
+- Vì LLM là generator đồng bộ, không thể asyncio.wait_for trực tiếp → dùng thread pool
 """
 from __future__ import annotations
 
@@ -38,48 +38,50 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 def _build_provider():
     name = get_selected_provider_name("LLM")
     if not name:
-        pytest.skip("selected_module.LLM 未设置")
+        pytest.skip("selected_module.LLM chưa được đặt")
     cfg = get_provider_config("LLM", name)
     if not cfg:
-        pytest.skip(f"LLM provider '{name}' 配置缺失")
+        pytest.skip(f"LLM provider '{name}' thiếu cấu hình")
 
-    # 任何模式下：key 是占位符 → skip。真请求需要真 key；mock 模式下
-    # 没有真 key 跑下去也会撞真 SDK 的网络栈（openai/edge_tts）报错。
+    # Mọi chế độ: key là placeholder → skip. Request thật cần key thật; ở chế độ
+    # mock nếu không có key thật mà chạy tiếp cũng sẽ va vào network stack của SDK
+    # thật (openai/edge_tts) và báo lỗi.
     if name == "CozeLLM":
         if any(x in cfg.get("bot_id", "") for x in ["你的"]) or any(
             x in cfg.get("user_id", "") for x in ["你的"]
         ):
-            pytest.skip("LLM 'CozeLLM' 的 bot_id/user_id 未配置")
+            pytest.skip("LLM 'CozeLLM' chưa cấu hình bot_id/user_id")
     elif name == "Ollama":
         if not cfg.get("model_name"):
-            pytest.skip("LLM 'Ollama' 的 model_name 未配置")
+            pytest.skip("LLM 'Ollama' chưa cấu hình model_name")
     elif not has_real_key(cfg, "api_key"):
         if LIVE_API_TESTS:
-            pytest.skip(f"LLM '{name}' 的 api_key 未配置")
+            pytest.skip(f"LLM '{name}' chưa cấu hình api_key")
         else:
             pytest.skip(
-                f"LLM '{name}' 的 api_key 是占位符（mock 模式不会真发请求）。"
-                "真请求模式：export RUN_LIVE_API_TESTS=1 并填真 key 后再跑。"
+                f"LLM '{name}' api_key là placeholder (chế độ mock sẽ không gửi request thật)."
+                "Chế độ request thật: export RUN_LIVE_API_TESTS=1 và điền key thật rồi chạy lại."
             )
 
     ptype = get_provider_type("LLM", name)
     if not ptype:
-        pytest.skip(f"LLM '{name}' 的 type 字段缺失")
+        pytest.skip(f"LLM '{name}' thiếu trường type")
     from core.utils.llm import create_instance
 
     return create_instance(ptype, cfg)
 
 
 def _collect_with_timeout(provider, session_id: str, dialogue, timeout: float = 10.0):
-    """调同步 generator response()，用线程池加 10s 超时。"""
+    """Gọi generator đồng bộ response(), dùng thread pool với timeout 10s."""
     with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
         future = executor.submit(lambda: list(provider.response(session_id, dialogue)))
         return future.result(timeout=timeout)
 
 
 def test_llm_response_streams_non_empty() -> None:
-    """response(session_id, dialogue) 应产生非空 token 流。"""
+    """response(session_id, dialogue) phải sinh ra luồng token không rỗng."""
     provider = _build_provider()
+    # Dữ liệu test: nội dung dialogue đưa vào LLM provider.
     dialogue = [
         {"role": "system", "content": "你是助手"},
         {"role": "user", "content": "用一句话说 hi"},
@@ -87,23 +89,24 @@ def test_llm_response_streams_non_empty() -> None:
     chunks = _collect_with_timeout(provider, "test-session", dialogue, timeout=10.0)
 
     full = "".join(chunks).strip()
-    assert isinstance(full, str), f"LLM chunks join 应是 str，得到 {type(full).__name__}"
-    assert full, f"LLM 返回空响应（provider={type(provider).__name__}）"
+    assert isinstance(full, str), f"LLM chunks join phải là str, được {type(full).__name__}"
+    assert full, f"LLM trả về response rỗng (provider={type(provider).__name__})"
 
 
 def test_llm_response_no_stream_returns_string() -> None:
-    """response_no_stream 应返回非空字符串。"""
+    """response_no_stream phải trả về chuỗi không rỗng."""
     provider = _build_provider()
+    # Dữ liệu test: system prompt / user content đưa vào provider.
     text = provider.response_no_stream("你是助手", "介绍一下北京").strip()
 
-    assert isinstance(text, str), f"response_no_stream 应返回 str，得到 {type(text).__name__}"
-    assert text, "response_no_stream 返回空字符串"
+    assert isinstance(text, str), f"response_no_stream phải trả về str, được {type(text).__name__}"
+    assert text, "response_no_stream trả về chuỗi rỗng"
 
 
 def test_llm_dialogue_min_length_one_user() -> None:
-    """至少一条 user 消息的 dialogue 应能跑通。"""
+    """Dialogue có ít nhất một user message phải chạy thông."""
     provider = _build_provider()
     dialogue = [{"role": "user", "content": "ping"}]
     chunks = _collect_with_timeout(provider, "s1", dialogue, timeout=10.0)
 
-    assert "".join(chunks).strip(), "单 user 消息应返回内容"
+    assert "".join(chunks).strip(), "Một user message phải trả về nội dung"

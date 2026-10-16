@@ -1,5 +1,5 @@
 """
-仅上报聊天记录，不进行记忆总结
+Chỉ báo cáo bản ghi trò chuyện, không tóm tắt ký ức
 """
 
 from ..base import MemoryProviderBase, logger

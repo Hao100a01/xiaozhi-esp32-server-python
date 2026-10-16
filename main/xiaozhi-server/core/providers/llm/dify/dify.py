@@ -14,17 +14,17 @@ class LLMProvider(LLMProviderBase):
         self.api_key = config["api_key"]
         self.mode = config.get("mode", "chat-messages")
         self.base_url = config.get("base_url", "https://api.dify.ai/v1").rstrip("/")
-        self.session_conversation_map = {}  # 存储session_id和conversation_id的映射
+        self.session_conversation_map = {}  # Lưu ánh xạ session_id và conversation_id
         model_key_msg = check_model_key("DifyLLM", self.api_key)
         if model_key_msg:
             logger.bind(tag=TAG).error(model_key_msg)
 
     def response(self, session_id, dialogue, **kwargs):
-        # 取最后一条用户消息
+        # Lấy thông điệp người dùng cuối cùng
         last_msg = next(m for m in reversed(dialogue) if m["role"] == "user")
         conversation_id = self.session_conversation_map.get(session_id)
 
-        # 发起流式请求
+        # Khởi tạo yêu cầu streaming
         if self.mode == "chat-messages":
             request_json = {
                 "query": last_msg["content"],
@@ -56,13 +56,13 @@ class LLMProvider(LLMProviderBase):
                 for line in r.iter_lines():
                     if line.startswith(b"data: "):
                         event = json.loads(line[6:])
-                        # 如果没有找到conversation_id，则获取此次conversation_id
+                        # Nếu không tìm thấy conversation_id, lấy conversation_id lần này
                         if not conversation_id:
                             conversation_id = event.get("conversation_id")
                             self.session_conversation_map[session_id] = (
-                                conversation_id  # 更新映射
+                                conversation_id  # Cập nhật ánh xạ
                             )
-                        # 过滤 message_replace 事件，此事件会全量推一次
+                        # Lọc sự kiện message_replace, sự kiện này sẽ đẩy toàn lượng một lần
                         if event.get("event") != "message_replace" and event.get(
                             "answer"
                         ):
@@ -75,12 +75,12 @@ class LLMProvider(LLMProviderBase):
                             if event["data"]["status"] == "succeeded":
                                 yield event["data"]["outputs"]["answer"]
                             else:
-                                yield "【服务响应异常】"
+                                yield "【Dịch vụ phản hồi bất thường】"
             elif self.mode == "completion-messages":
                 for line in r.iter_lines():
                     if line.startswith(b"data: "):
                         event = json.loads(line[6:])
-                        # 过滤 message_replace 事件，此事件会全量推一次
+                        # Lọc sự kiện message_replace, sự kiện này sẽ đẩy toàn lượng một lần
                         if event.get("event") != "message_replace" and event.get(
                             "answer"
                         ):
@@ -88,13 +88,13 @@ class LLMProvider(LLMProviderBase):
 
     def response_with_functions(self, session_id, dialogue, functions=None):
         if len(dialogue) == 2 and functions is not None and len(functions) > 0:
-            # 第一次调用llm， 取最后一条用户消息，附加tool提示词
+            # Lần đầu gọi llm, lấy thông điệp người dùng cuối cùng, đính kèm prompt tool
             last_msg = dialogue[-1]["content"]
             function_str = json.dumps(functions, ensure_ascii=False)
             modify_msg = get_system_prompt_for_function(function_str) + last_msg
             dialogue[-1]["content"] = modify_msg
 
-        # 如果最后一个是 role="tool"，附加到user上
+        # Nếu cái cuối cùng là role="tool", đính kèm vào user
         if len(dialogue) > 1 and dialogue[-1]["role"] == "tool":
             assistant_msg = "\ntool call result: " + dialogue[-1]["content"] + "\n\n"
             while len(dialogue) > 1:
